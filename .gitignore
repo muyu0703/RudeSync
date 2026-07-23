@@ -1,0 +1,27 @@
+# Dependencies and frontend output
+node_modules/
+dist/
+
+# Tauri and Rust output
+src-tauri/target/
+
+# Local state and generated artifacts
+.superpowers/
+*.db
+*.db-shm
+*.db-wal
+backups/
+invoices/
+
+# Environment and editor files
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
