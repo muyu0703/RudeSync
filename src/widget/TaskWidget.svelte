@@ -15,6 +15,8 @@
   let expandedId: string | null = null;
   let editingId: string | null = null;
   let editTitle = "";
+  let editingNotesId: string | null = null;
+  let editNotes = "";
   let error = "";
 
   $: visibleTasks = openTasks(tasks);
@@ -67,6 +69,18 @@
 
   function setPriority(task: Task, priority: TaskPriority): void {
     void mutate(() => service.updateTask(task.id, { priority }));
+  }
+
+  function startEditNotes(task: Task): void {
+    editingNotesId = task.id;
+    editNotes = task.notes ?? "";
+  }
+
+  function commitNotes(task: Task): void {
+    const notes = editNotes.trim();
+    editingNotesId = null;
+    if (notes === (task.notes ?? "")) return;
+    void mutate(() => service.updateTask(task.id, { notes: notes || null }));
   }
 
   function toggleExpand(id: string): void {
@@ -134,14 +148,12 @@
             </button>
           {/if}
 
-          {#if task.subtasks.length > 0}
-            <button
-              class="expand"
-              aria-label="Toggle subtasks"
-              aria-expanded={expandedId === task.id}
-              on:click={() => toggleExpand(task.id)}
-            >{expandedId === task.id ? "▾" : "▸"}</button>
-          {/if}
+          <button
+            class="expand"
+            aria-label="Toggle details"
+            aria-expanded={expandedId === task.id}
+            on:click={() => toggleExpand(task.id)}
+          >{expandedId === task.id ? "▾" : "▸"}</button>
         </div>
 
         {#if expandedId === task.id}
@@ -156,20 +168,43 @@
                 >{level}</button>
               {/each}
             </div>
-            <ul class="subtasks">
-              {#each task.subtasks as subtask (subtask.id)}
-                <li>
-                  <button
-                    class="check small"
-                    role="checkbox"
-                    aria-checked={subtask.completed}
-                    aria-label={`Complete ${subtask.title}`}
-                    on:click={() => toggleSubtask(subtask.id, subtask.completed)}
-                  ></button>
-                  <span class:done={subtask.completed}>{subtask.title}</span>
-                </li>
-              {/each}
-            </ul>
+            {#if task.subtasks.length > 0}
+              <ul class="subtasks">
+                {#each task.subtasks as subtask (subtask.id)}
+                  <li>
+                    <button
+                      class="check small"
+                      role="checkbox"
+                      aria-checked={subtask.completed}
+                      aria-label={`Complete ${subtask.title}`}
+                      on:click={() => toggleSubtask(subtask.id, subtask.completed)}
+                    ></button>
+                    <span class:done={subtask.completed}>{subtask.title}</span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+
+            {#if editingNotesId === task.id}
+              <textarea
+                class="note-edit"
+                bind:value={editNotes}
+                maxlength="1200"
+                rows="3"
+                placeholder="Add a note…"
+                on:blur={() => commitNotes(task)}
+                on:keydown={(e) => {
+                  if (e.key === "Escape") editingNotesId = null;
+                }}
+              ></textarea>
+            {:else}
+              <button
+                class="note"
+                class:empty-note={!task.notes}
+                title="Click to edit note"
+                on:click={() => startEditNotes(task)}
+              >{task.notes ? task.notes : "Add a note…"}</button>
+            {/if}
           </div>
         {/if}
       </li>
@@ -374,6 +409,40 @@
   .subtasks .done {
     color: #536158;
     text-decoration: line-through;
+  }
+
+  .note {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 0;
+    color: #aebdb4;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: transparent;
+    border: none;
+    cursor: text;
+  }
+  .note.empty-note {
+    color: #536158;
+    font-style: italic;
+  }
+  .note-edit {
+    width: 100%;
+    margin-top: 6px;
+    padding: 6px 8px;
+    color: #edf5f0;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1.5;
+    background: #090d0b;
+    border: 1px solid var(--accent, #43d17f);
+    border-radius: 6px;
+    resize: vertical;
   }
 
   .empty {
