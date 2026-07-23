@@ -470,6 +470,38 @@ fn set_task_completed(
 }
 
 #[tauri::command]
+fn delete_task(database: State<'_, Database>, task_id: String) -> Result<(), AppError> {
+    let task_id = required_trimmed(task_id, "Task ID", 64)?;
+    let mut connection = database.lock()?;
+    let transaction = connection.transaction()?;
+    let now = utc_now();
+
+    let affected = transaction.execute(
+        "UPDATE tasks
+             SET deleted_at = ?2, updated_at = ?2
+         WHERE (id = ?1 OR parent_task_id = ?1) AND deleted_at IS NULL",
+        params![task_id, now],
+    )?;
+    if affected == 0 {
+        return Err(AppError::NotFound("Task not found.".into()));
+    }
+    transaction.execute(
+        "UPDATE task_reminders
+             SET deleted_at = ?2, updated_at = ?2
+         WHERE task_id = ?1 AND deleted_at IS NULL",
+        params![task_id, now],
+    )?;
+    transaction.execute(
+        "UPDATE task_recurrences
+             SET deleted_at = ?2, updated_at = ?2
+         WHERE task_id = ?1 AND deleted_at IS NULL",
+        params![task_id, now],
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
+#[tauri::command]
 fn update_task(
     database: State<'_, Database>,
     id: String,
@@ -1449,6 +1481,11 @@ fn show_task_widget(app: AppHandle) {
     reveal_task_widget(&app);
 }
 
+#[tauri::command]
+fn focus_main_window(app: AppHandle) {
+    show_main_window(&app);
+}
+
 fn preference_enabled(app: &AppHandle, column: &str, fallback: bool) -> bool {
     // `column` is never supplied by IPC; only these two static call sites use
     // it. Keeping the small allowlist here prevents accidental SQL injection if
@@ -1609,7 +1646,9 @@ pub fn run() {
             toggle_task,
             set_task_completed,
             update_task,
+            delete_task,
             show_task_widget,
+            focus_main_window,
             csv_export::export_csv,
             domain::list_clients,
             domain::create_client,

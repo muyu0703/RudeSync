@@ -24,6 +24,7 @@ export interface TaskService {
   createTask(input: CreateTaskInput): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   setTaskCompleted(id: string, completed: boolean): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
 }
 
 function localIsoDay(date = new Date()): string {
@@ -289,6 +290,13 @@ class BrowserTaskService implements TaskService {
       return updated;
     });
   }
+
+  async deleteTask(id: string): Promise<void> {
+    const tasks = this.read().filter(
+      (task) => task.id !== id && task.parentTaskId !== id,
+    );
+    this.write(tasks);
+  }
 }
 
 class TauriTaskService implements TaskService {
@@ -334,6 +342,10 @@ class TauriTaskService implements TaskService {
       completed,
     });
     return parseTask(updated);
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await this.invoke<unknown>("delete_task", { taskId: id });
   }
 }
 

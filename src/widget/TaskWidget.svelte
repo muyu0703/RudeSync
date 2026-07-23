@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { createTaskService } from "../lib/services/backend.ts";
-  import { emitTasksChanged, onTasksChanged } from "../lib/services/taskSync.ts";
+  import { emitTasksChanged, onTasksChanged, emitOpenTask } from "../lib/services/taskSync.ts";
   import { openTasks, isValidQuickAdd, PRIORITY_ORDER } from "./widgetTasks.ts";
   import type { Task, TaskPriority } from "../lib/types.ts";
 
@@ -17,6 +17,7 @@
   let editTitle = "";
   let editingNotesId: string | null = null;
   let editNotes = "";
+  let confirmingDeleteId: string | null = null;
   let error = "";
 
   $: visibleTasks = openTasks(tasks);
@@ -81,6 +82,23 @@
     editingNotesId = null;
     if (notes === (task.notes ?? "")) return;
     void mutate(() => service.updateTask(task.id, { notes: notes || null }));
+  }
+
+  function deleteTask(task: Task): void {
+    confirmingDeleteId = null;
+    expandedId = null;
+    void mutate(() => service.deleteTask(task.id));
+  }
+
+  function openInApp(task: Task): void {
+    void emitOpenTask(task.id);
+    const tauri = window as unknown as {
+      __TAURI_INTERNALS__?: { invoke?: (cmd: string) => Promise<unknown> };
+      __TAURI__?: { core?: { invoke?: (cmd: string) => Promise<unknown> } };
+    };
+    const invoke =
+      tauri.__TAURI_INTERNALS__?.invoke ?? tauri.__TAURI__?.core?.invoke;
+    if (invoke) void invoke("focus_main_window");
   }
 
   function toggleExpand(id: string): void {
@@ -205,6 +223,19 @@
                 on:click={() => startEditNotes(task)}
               >{task.notes ? task.notes : "Add a note…"}</button>
             {/if}
+
+            <div class="actions">
+              <button class="act" on:click={() => openInApp(task)}>Open in app</button>
+              {#if confirmingDeleteId === task.id}
+                <span class="confirm">
+                  <span class="confirm-label">Delete?</span>
+                  <button class="act danger" on:click={() => deleteTask(task)}>Delete</button>
+                  <button class="act" on:click={() => (confirmingDeleteId = null)}>Cancel</button>
+                </span>
+              {:else}
+                <button class="act ghost-danger" on:click={() => (confirmingDeleteId = task.id)}>Delete</button>
+              {/if}
+            </div>
           </div>
         {/if}
       </li>
@@ -443,6 +474,50 @@
     border: 1px solid var(--accent, #43d17f);
     border-radius: 6px;
     resize: vertical;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(42, 58, 49, 0.4);
+  }
+  .act {
+    padding: 3px 8px;
+    color: #aebdb4;
+    font: inherit;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: transparent;
+    border: 1px solid #2a3a31;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .act:hover {
+    border-color: #3a4c42;
+  }
+  .act.ghost-danger {
+    margin-left: auto;
+    color: #d98a8a;
+  }
+  .act.danger {
+    color: #07120c;
+    background: #ef7676;
+    border-color: #ef7676;
+  }
+  .confirm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .confirm-label {
+    color: #f0a5a5;
+    font-size: 9px;
   }
 
   .empty {

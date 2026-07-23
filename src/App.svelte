@@ -34,7 +34,11 @@
     WorkEntryPrefill,
   } from "./lib/features/work/types";
   import { createTaskService, dateUtils } from "./lib/services/backend";
-  import { emitTasksChanged, onTasksChanged } from "./lib/services/taskSync.ts";
+  import {
+    emitTasksChanged,
+    onTasksChanged,
+    onOpenTask,
+  } from "./lib/services/taskSync.ts";
   import type { AppSection, Task } from "./lib/types";
   import type { InvoiceExportDetail } from "./lib/features/money/types";
 
@@ -601,12 +605,20 @@
     void onTasksChanged(() => void loadTasks()).then((off) => {
       unsubscribeTasksChanged = off;
     });
+    let unsubscribeOpenTask: (() => void) | null = null;
+    void onOpenTask((taskId) => {
+      const task = tasks.find((item) => item.id === taskId);
+      if (task) openTaskEditor(task);
+    }).then((off) => {
+      unsubscribeOpenTask = off;
+    });
     return () => {
       window.clearInterval(calendarTimer);
       window.clearInterval(backupTimer);
       window.removeEventListener("keydown", handleShortcut);
       window.removeEventListener("focus", refreshCalendarBoundaries);
       unsubscribeTasksChanged?.();
+      unsubscribeOpenTask?.();
     };
   });
 </script>
