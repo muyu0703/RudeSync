@@ -24,6 +24,12 @@ export default defineConfig({
   build: {
     target: ["es2021", "chrome105", "safari13"],
     cssMinify: true,
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        widget: "widget.html"
+      }
+    }
   }
 });
