@@ -470,6 +470,16 @@
     void loadTaskProjects();
   }
 
+  async function openTaskWidget(): Promise<void> {
+    const tauri = window as unknown as {
+      __TAURI_INTERNALS__?: { invoke?: (cmd: string) => Promise<unknown> };
+      __TAURI__?: { core?: { invoke?: (cmd: string) => Promise<unknown> } };
+    };
+    const invoke =
+      tauri.__TAURI_INTERNALS__?.invoke ?? tauri.__TAURI__?.core?.invoke;
+    if (invoke) await invoke("show_task_widget");
+  }
+
   async function saveTask(event: CustomEvent<TaskDialogSaveDetail>): Promise<void> {
     if (taskDialogSaving) return;
     taskDialogSaving = true;
@@ -794,6 +804,11 @@
             type="button"
             on:click={() => openTaskEditor()}
           ><Icon name="plus" size={15} /> New task</button>
+          <button
+            class="primary-button"
+            type="button"
+            on:click={() => void openTaskWidget()}
+          ><Icon name="spark" size={15} /> Pop out widget</button>
         </section>
 
         <section class="panel full-panel">
