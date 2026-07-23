@@ -23,6 +23,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
 thiserror = "2"
 uuid = { version = "1", features = ["serde", "v4"] }
 

@@ -1436,6 +1436,19 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+fn reveal_task_widget(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("task-widget") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+#[tauri::command]
+fn show_task_widget(app: AppHandle) {
+    reveal_task_widget(&app);
+}
+
 fn preference_enabled(app: &AppHandle, column: &str, fallback: bool) -> bool {
     // `column` is never supplied by IPC; only these two static call sites use
     // it. Keeping the small allowlist here prevents accidental SQL injection if
@@ -1489,8 +1502,10 @@ fn tray_icon() -> Image<'static> {
 
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let open_item = MenuItem::with_id(app, "open", "Open RudeSync", true, None::<&str>)?;
+    let widget_item =
+        MenuItem::with_id(app, "widget", "Show task widget", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&open_item, &widget_item, &quit_item])?;
 
     TrayIconBuilder::with_id("rudesync")
         .icon(tray_icon())
@@ -1499,6 +1514,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
+            "widget" => reveal_task_widget(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -1540,6 +1556,11 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_denylist(&["main"])
+                .build(),
+        )
         .setup(|app| {
             let data_directory = app.path().app_data_dir()?;
             fs::create_dir_all(&data_directory)?;
@@ -1588,6 +1609,7 @@ pub fn run() {
             toggle_task,
             set_task_completed,
             update_task,
+            show_task_widget,
             csv_export::export_csv,
             domain::list_clients,
             domain::create_client,
