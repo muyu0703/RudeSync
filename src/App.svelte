@@ -34,6 +34,7 @@
     WorkEntryPrefill,
   } from "./lib/features/work/types";
   import { createTaskService, dateUtils } from "./lib/services/backend";
+  import { emitTasksChanged, onTasksChanged } from "./lib/services/taskSync.ts";
   import type { AppSection, Task } from "./lib/types";
   import type { InvoiceExportDetail } from "./lib/features/money/types";
 
@@ -374,6 +375,7 @@
         priority: "medium",
       });
       tasks = [created, ...tasks];
+      void emitTasksChanged();
       quickTitle = "";
       await tick();
       quickInput?.focus();
@@ -402,6 +404,7 @@
         completing,
       );
       tasks = tasks.map((item) => (item.id === updated.id ? updated : item));
+      void emitTasksChanged();
       if (
         shouldOfferCompletedWork(task, completing) &&
         window.confirm(
@@ -497,6 +500,7 @@
         });
       }
       await loadTasks();
+      void emitTasksChanged();
       taskDialogOpen = false;
       editingTask = null;
     } catch (error) {
@@ -519,6 +523,7 @@
         event.detail.completed,
       );
       await loadTasks();
+      void emitTasksChanged();
       editingTask =
         tasks.find((task) => task.id === editingTask?.id) ?? editingTask;
     } catch (error) {
@@ -582,11 +587,16 @@
     );
     window.addEventListener("keydown", handleShortcut);
     window.addEventListener("focus", refreshCalendarBoundaries);
+    let unsubscribeTasksChanged: (() => void) | null = null;
+    void onTasksChanged(() => void loadTasks()).then((off) => {
+      unsubscribeTasksChanged = off;
+    });
     return () => {
       window.clearInterval(calendarTimer);
       window.clearInterval(backupTimer);
       window.removeEventListener("keydown", handleShortcut);
       window.removeEventListener("focus", refreshCalendarBoundaries);
+      unsubscribeTasksChanged?.();
     };
   });
 </script>
