@@ -23,6 +23,22 @@
         "visible": true,
         "resizable": true,
         "decorations": true
+      },
+      {
+        "label": "task-widget",
+        "url": "widget.html",
+        "title": "RudeSync Tasks",
+        "width": 300,
+        "height": 420,
+        "minWidth": 200,
+        "minHeight": 160,
+        "visible": false,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": true
       }
     ],
     "security": {
