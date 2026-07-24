@@ -1,6 +1,14 @@
 export type ProjectStatus = "draft" | "active" | "completed" | "archived";
 
-export type MilestoneKind = "kickoff" | "completion";
+export type MilestoneKind =
+  | "kickoff"
+  | "completion"
+  | "phase"
+  | "weekly"
+  | "additional"
+  | "custom";
+
+export type MilestoneStatus = "not-invoiced" | "invoiced" | "paid";
 
 export interface Client {
   id: string;
@@ -24,9 +32,12 @@ export interface CreateClientInput {
 }
 
 export interface ProjectMilestone {
-  kind: MilestoneKind;
+  id?: string;
   label: string;
-  percentBasisPoints: number;
+  amountMinor: number;
+  kind: MilestoneKind;
+  sortOrder: number;
+  status?: MilestoneStatus;
 }
 
 export interface Project {
