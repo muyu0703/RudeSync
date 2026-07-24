@@ -203,6 +203,7 @@ pub(crate) struct Project {
     created_at: String,
     updated_at: String,
     deleted_at: Option<String>,
+    milestones: Vec<Milestone>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,6 +222,28 @@ pub(crate) struct CreateProjectInput {
     completion_label: Option<String>,
     start_date: Option<String>,
     due_date: Option<String>,
+    milestones: Option<Vec<MilestoneInput>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Milestone {
+    id: String,
+    label: String,
+    amount_minor: i64,
+    kind: String,
+    sort_order: i64,
+    status: String, // "not-invoiced" | "invoiced" | "paid"
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MilestoneInput {
+    id: Option<String>,
+    label: String,
+    amount_minor: i64,
+    kind: Option<String>,
+    sort_order: Option<i64>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -275,7 +298,11 @@ fn list_projects_from_connection(
         ],
         project_from_row,
     )?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(AppError::from)
+    let mut projects = rows.collect::<Result<Vec<_>, _>>().map_err(AppError::from)?;
+    for project in &mut projects {
+        project.milestones = load_project_milestones(connection, &project.id)?;
+    }
+    Ok(projects)
 }
 
 #[tauri::command]
@@ -284,7 +311,14 @@ pub(crate) fn create_project(
     input: CreateProjectInput,
 ) -> Result<Project, AppError> {
     let connection = database.lock()?;
-    let values = validate_project_input(&connection, input)?;
+    create_project_in_connection(&connection, input)
+}
+
+fn create_project_in_connection(
+    connection: &Connection,
+    input: CreateProjectInput,
+) -> Result<Project, AppError> {
+    let values = validate_project_input(connection, input)?;
     let id = Uuid::new_v4().to_string();
     let now = utc_now();
     let completed_at = (values.status == "completed").then(|| now.clone());
@@ -317,7 +351,8 @@ pub(crate) fn create_project(
             now
         ],
     )?;
-    load_project(&connection, &id, false)
+    sync_project_milestones(connection, &id, &values.milestones, &now)?;
+    load_project(connection, &id, false)
 }
 
 #[tauri::command]
@@ -380,6 +415,7 @@ fn update_project_in_connection(
     if changed == 0 {
         return Err(AppError::NotFound("Project not found.".into()));
     }
+    sync_project_milestones(connection, &id, &values.milestones, &now)?;
     load_project(connection, &id, false)
 }
 
@@ -397,6 +433,15 @@ struct ValidatedProject {
     completion_label: String,
     start_date: Option<String>,
     due_date: Option<String>,
+    milestones: Vec<ValidatedMilestone>,
+}
+
+struct ValidatedMilestone {
+    id: Option<String>,
+    label: String,
+    amount_minor: i64,
+    kind: String,
+    sort_order: i64,
 }
 
 fn validate_project_input(
@@ -410,18 +455,45 @@ fn validate_project_input(
         None => currency_for_client_or_default(connection, client_id.as_deref())?,
     };
     let status = validate_project_status(input.status.as_deref().unwrap_or("active"))?;
-    let kickoff_percent_basis_points = input.kickoff_percent_basis_points.unwrap_or(5_000);
-    let completion_percent_basis_points = input.completion_percent_basis_points.unwrap_or(5_000);
-    validate_milestone_split(
-        kickoff_percent_basis_points,
-        completion_percent_basis_points,
-    )?;
     let start_date = validate_optional_date(input.start_date, "startDate")?;
     let due_date = validate_optional_date(input.due_date, "dueDate")?;
     validate_date_order(start_date.as_deref(), due_date.as_deref(), "Project")?;
     let urls = validate_urls(input.urls.unwrap_or_default())?;
     let urls_json = serde_json::to_string(&urls)
         .map_err(|error| AppError::State(format!("Could not serialize project URLs: {error}")))?;
+
+    let allowed_kinds = [
+        "kickoff",
+        "completion",
+        "phase",
+        "weekly",
+        "additional",
+        "custom",
+    ];
+    let mut milestones = Vec::new();
+    for (index, m) in input.milestones.unwrap_or_default().into_iter().enumerate() {
+        let label = required_trimmed(m.label, "Milestone label", 80)?;
+        if m.amount_minor < 0 {
+            return Err(AppError::InvalidInput(
+                "Milestone amount cannot be negative.".into(),
+            ));
+        }
+        let kind = m.kind.unwrap_or_else(|| "custom".into());
+        if !allowed_kinds.contains(&kind.as_str()) {
+            return Err(AppError::InvalidInput("Unknown milestone kind.".into()));
+        }
+        let id = match m.id {
+            Some(id) => Some(required_trimmed(id, "Milestone ID", 64)?),
+            None => None,
+        };
+        milestones.push(ValidatedMilestone {
+            id,
+            label,
+            amount_minor: m.amount_minor,
+            kind,
+            sort_order: m.sort_order.unwrap_or(index as i64),
+        });
+    }
 
     Ok(ValidatedProject {
         client_id,
@@ -431,13 +503,13 @@ fn validate_project_input(
         status,
         currency,
         quoted_total_minor: nonnegative_minor(input.quoted_total_minor, "quotedTotalMinor")?,
-        kickoff_percent_basis_points,
+        kickoff_percent_basis_points: 5_000,
         kickoff_label: required_trimmed(
             input.kickoff_label.unwrap_or_else(|| "Kickoff".into()),
             "Kickoff milestone label",
             80,
         )?,
-        completion_percent_basis_points,
+        completion_percent_basis_points: 5_000,
         completion_label: required_trimmed(
             input
                 .completion_label
@@ -447,6 +519,7 @@ fn validate_project_input(
         )?,
         start_date,
         due_date,
+        milestones,
     })
 }
 
@@ -455,7 +528,7 @@ fn load_project(
     id: &str,
     include_deleted: bool,
 ) -> Result<Project, AppError> {
-    connection
+    let mut project = connection
         .query_row(
             "SELECT id, client_id, name, description, urls_json, status, currency,
                     quoted_total_minor, kickoff_percent_basis_points,
@@ -468,7 +541,9 @@ fn load_project(
             project_from_row,
         )
         .optional()?
-        .ok_or_else(|| AppError::NotFound("Project not found.".into()))
+        .ok_or_else(|| AppError::NotFound("Project not found.".into()))?;
+    project.milestones = load_project_milestones(connection, id)?;
+    Ok(project)
 }
 
 fn project_from_row(row: &Row<'_>) -> rusqlite::Result<Project> {
@@ -493,6 +568,7 @@ fn project_from_row(row: &Row<'_>) -> rusqlite::Result<Project> {
         created_at: row.get(15)?,
         updated_at: row.get(16)?,
         deleted_at: row.get(17)?,
+        milestones: Vec::new(),
     })
 }
 
@@ -727,18 +803,71 @@ fn nonnegative_minor(value: i64, field: &str) -> Result<i64, AppError> {
     Ok(value)
 }
 
-fn validate_milestone_split(kickoff: i64, completion: i64) -> Result<(), AppError> {
-    if !(0..=10_000).contains(&kickoff) || !(0..=10_000).contains(&completion) {
-        return Err(AppError::InvalidInput(
-            "Milestone percentages must each be between 0 and 10000 basis points.".into(),
-        ));
+fn sync_project_milestones(
+    connection: &Connection,
+    project_id: &str,
+    milestones: &[ValidatedMilestone],
+    now: &str,
+) -> Result<(), AppError> {
+    // Soft-delete milestones no longer present.
+    let keep_ids: Vec<String> = milestones.iter().filter_map(|m| m.id.clone()).collect();
+    let placeholders = keep_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "UPDATE project_milestones SET deleted_at = ?, updated_at = ? \
+         WHERE project_id = ? AND deleted_at IS NULL \
+         AND ({})",
+        if keep_ids.is_empty() {
+            "1=1".to_string()
+        } else {
+            format!("id NOT IN ({placeholders})")
+        }
+    );
+    let mut args: Vec<&dyn rusqlite::ToSql> = vec![&now, &now, &project_id];
+    for id in &keep_ids {
+        args.push(id);
     }
-    if kickoff + completion != 10_000 {
-        return Err(AppError::InvalidInput(
-            "Kickoff and completion percentages must total exactly 10000 basis points.".into(),
-        ));
+    connection.execute(&sql, args.as_slice())?;
+
+    for m in milestones {
+        match &m.id {
+            Some(id) => {
+                connection.execute(
+                    "UPDATE project_milestones SET label=?2, amount_minor=?3, kind=?4, sort_order=?5, updated_at=?6 \
+                     WHERE id=?1 AND project_id=?7 AND deleted_at IS NULL",
+                    params![id, m.label, m.amount_minor, m.kind, m.sort_order, now, project_id],
+                )?;
+            }
+            None => {
+                connection.execute(
+                    "INSERT INTO project_milestones (id, project_id, label, amount_minor, kind, sort_order, created_at, updated_at) \
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?7)",
+                    params![Uuid::new_v4().to_string(), project_id, m.label, m.amount_minor, m.kind, m.sort_order, now],
+                )?;
+            }
+        }
     }
     Ok(())
+}
+
+fn load_project_milestones(
+    connection: &Connection,
+    project_id: &str,
+) -> Result<Vec<Milestone>, AppError> {
+    let mut stmt = connection.prepare(
+        "SELECT id, label, amount_minor, kind, sort_order FROM project_milestones \
+         WHERE project_id = ?1 AND deleted_at IS NULL ORDER BY sort_order ASC, created_at ASC",
+    )?;
+    let rows = stmt.query_map(params![project_id], |row| {
+        Ok(Milestone {
+            id: row.get(0)?,
+            label: row.get(1)?,
+            amount_minor: row.get(2)?,
+            kind: row.get(3)?,
+            sort_order: row.get(4)?,
+            status: "not-invoiced".to_string(), // real status wired in Task 4
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(AppError::from)
 }
 
 fn validate_date_order(
@@ -853,14 +982,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn milestone_split_must_total_one_hundred_percent() {
-        assert!(validate_milestone_split(5_000, 5_000).is_ok());
-        assert!(validate_milestone_split(3_000, 7_000).is_ok());
-        assert!(validate_milestone_split(5_000, 4_999).is_err());
-        assert!(validate_milestone_split(-1, 10_001).is_err());
-    }
-
-    #[test]
     fn currencies_and_work_urls_are_normalized() {
         assert_eq!(validate_currency(" usd ").unwrap(), "USD");
         assert!(validate_currency("US").is_err());
@@ -921,6 +1042,17 @@ mod tests {
                     bill_to_name TEXT NOT NULL,
                     milestone_label TEXT
                 );
+                CREATE TABLE project_milestones (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    amount_minor INTEGER NOT NULL DEFAULT 0,
+                    kind TEXT NOT NULL DEFAULT 'custom',
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
                 INSERT INTO clients (
                     id, name, company_name, email, billing_address, currency,
                     notes, created_at, updated_at, deleted_at
@@ -978,6 +1110,7 @@ mod tests {
                 completion_label: Some("Final delivery".into()),
                 start_date: Some("2026-07-24".into()),
                 due_date: Some("2026-08-24".into()),
+                milestones: None,
             },
         )
         .unwrap();
@@ -1001,5 +1134,228 @@ mod tests {
                 "Kickoff".into()
             )
         );
+    }
+
+    fn milestones_test_connection() -> Connection {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE projects (
+                    id TEXT PRIMARY KEY,
+                    client_id TEXT,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    urls_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL,
+                    currency TEXT NOT NULL,
+                    quoted_total_minor INTEGER NOT NULL,
+                    kickoff_percent_basis_points INTEGER NOT NULL,
+                    kickoff_label TEXT NOT NULL,
+                    completion_percent_basis_points INTEGER NOT NULL,
+                    completion_label TEXT NOT NULL,
+                    start_date TEXT,
+                    due_date TEXT,
+                    completed_at TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE project_milestones (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    amount_minor INTEGER NOT NULL DEFAULT 0,
+                    kind TEXT NOT NULL DEFAULT 'custom',
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );",
+            )
+            .unwrap();
+        connection
+    }
+
+    fn milestone_project_input(milestones: Option<Vec<MilestoneInput>>) -> CreateProjectInput {
+        CreateProjectInput {
+            client_id: None,
+            name: "Milestone Project".into(),
+            description: None,
+            urls: None,
+            status: Some("active".into()),
+            currency: Some("USD".into()),
+            quoted_total_minor: 30_000,
+            kickoff_percent_basis_points: None,
+            kickoff_label: None,
+            completion_percent_basis_points: None,
+            completion_label: None,
+            start_date: None,
+            due_date: None,
+            milestones,
+        }
+    }
+
+    #[test]
+    fn creating_project_with_milestones_persists_three_rows() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![
+                MilestoneInput {
+                    id: None,
+                    label: "Kickoff".into(),
+                    amount_minor: 10_000,
+                    kind: Some("kickoff".into()),
+                    sort_order: Some(0),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "Midpoint".into(),
+                    amount_minor: 10_000,
+                    kind: Some("phase".into()),
+                    sort_order: Some(1),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "Completion".into(),
+                    amount_minor: 10_000,
+                    kind: Some("completion".into()),
+                    sort_order: Some(2),
+                },
+            ])),
+        )
+        .unwrap();
+
+        assert_eq!(project.milestones.len(), 3);
+        let row_count: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM project_milestones
+                 WHERE project_id = ?1 AND deleted_at IS NULL",
+                params![project.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(row_count, 3);
+    }
+
+    #[test]
+    fn updating_project_to_remove_a_milestone_soft_deletes_it() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![
+                MilestoneInput {
+                    id: None,
+                    label: "Kickoff".into(),
+                    amount_minor: 15_000,
+                    kind: Some("kickoff".into()),
+                    sort_order: Some(0),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "Completion".into(),
+                    amount_minor: 15_000,
+                    kind: Some("completion".into()),
+                    sort_order: Some(1),
+                },
+            ])),
+        )
+        .unwrap();
+        assert_eq!(project.milestones.len(), 2);
+        let kept_id = project.milestones[0].id.clone();
+
+        let updated = update_project_in_connection(
+            &connection,
+            &project.id,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: Some(kept_id.clone()),
+                label: "Kickoff".into(),
+                amount_minor: 15_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        )
+        .unwrap();
+
+        assert_eq!(updated.milestones.len(), 1);
+        assert_eq!(updated.milestones[0].id, kept_id);
+        let deleted_count: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM project_milestones
+                 WHERE project_id = ?1 AND deleted_at IS NOT NULL",
+                params![project.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(deleted_count, 1);
+    }
+
+    #[test]
+    fn load_project_returns_milestones_ordered_by_sort_order() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![
+                MilestoneInput {
+                    id: None,
+                    label: "Second".into(),
+                    amount_minor: 5_000,
+                    kind: None,
+                    sort_order: Some(1),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "First".into(),
+                    amount_minor: 5_000,
+                    kind: None,
+                    sort_order: Some(0),
+                },
+            ])),
+        )
+        .unwrap();
+
+        let loaded = load_project(&connection, &project.id, false).unwrap();
+        let labels: Vec<&str> = loaded
+            .milestones
+            .iter()
+            .map(|m| m.label.as_str())
+            .collect();
+        assert_eq!(labels, vec!["First", "Second"]);
+        assert!(loaded.milestones.iter().all(|m| m.status == "not-invoiced"));
+    }
+
+    #[test]
+    fn milestone_amounts_sum_to_project_total() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![
+                MilestoneInput {
+                    id: None,
+                    label: "Kickoff".into(),
+                    amount_minor: 12_000,
+                    kind: Some("kickoff".into()),
+                    sort_order: Some(0),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "Phase".into(),
+                    amount_minor: 8_000,
+                    kind: Some("phase".into()),
+                    sort_order: Some(1),
+                },
+                MilestoneInput {
+                    id: None,
+                    label: "Completion".into(),
+                    amount_minor: 10_000,
+                    kind: Some("completion".into()),
+                    sort_order: Some(2),
+                },
+            ])),
+        )
+        .unwrap();
+
+        let sum: i64 = project.milestones.iter().map(|m| m.amount_minor).sum();
+        assert_eq!(sum, 30_000);
     }
 }
