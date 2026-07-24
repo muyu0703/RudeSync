@@ -79,6 +79,7 @@ pub(crate) struct InvoiceListFilter {
 pub(crate) struct CreateInvoiceInput {
     project_id: String,
     client_id: String,
+    milestone_id: Option<String>,
     milestone_kind: String,
     milestone_percent_basis_points: Option<i64>,
     milestone_label: Option<String>,
@@ -321,6 +322,7 @@ fn create_invoice_with_database(
     let issue_date = required_date(input.issue_date, "issueDate")?;
     let currency = validate_currency(&input.currency)?;
     let milestone_kind = validate_milestone_kind(&input.milestone_kind)?;
+    let milestone_id = optional_trimmed(input.milestone_id, 64, "Milestone ID")?;
     let status = validate_new_invoice_status(input.status.as_deref().unwrap_or("issued"))?;
     let notes = optional_trimmed(input.notes, 20_000, "Invoice notes")?;
     let requested_payment_instructions =
@@ -358,6 +360,42 @@ fn create_invoice_with_database(
                 _ => None,
             }
         });
+
+    // If a flexible milestone was selected, its label/kind snapshot overrides
+    // the legacy kickoff/completion-derived values above, and we enforce that
+    // a milestone can have at most one active (non-void, non-deleted) invoice.
+    let (milestone_kind, milestone_label) = if let Some(milestone_id) = milestone_id.as_deref() {
+        let milestone: Option<(String, String, i64)> = transaction
+            .query_row(
+                "SELECT label, kind, amount_minor FROM project_milestones WHERE id = ?1 AND deleted_at IS NULL",
+                params![milestone_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()?;
+        let (label, kind, _amount_minor) =
+            milestone.ok_or_else(|| AppError::NotFound("Milestone not found.".into()))?;
+
+        let active: i64 = transaction.query_row(
+            "SELECT COUNT(*) FROM invoices WHERE milestone_id = ?1 AND deleted_at IS NULL AND status <> 'void'",
+            params![milestone_id],
+            |row| row.get(0),
+        )?;
+        if active > 0 {
+            return Err(AppError::InvalidInput(
+                "This milestone already has an active invoice. Void it first to re-invoice."
+                    .into(),
+            ));
+        }
+
+        let mapped_kind = match kind.as_str() {
+            "kickoff" | "completion" => kind,
+            _ => "custom".to_string(),
+        };
+        (mapped_kind, Some(label))
+    } else {
+        (milestone_kind, milestone_label)
+    };
+
     let seller = load_seller_snapshot(&transaction)?;
     if status == "issued" && seller.name.trim().is_empty() {
         return Err(AppError::InvalidInput(
@@ -385,6 +423,7 @@ fn create_invoice_with_database(
             client_id,
             invoice_profile_id,
             invoice_number,
+            milestone_id,
             milestone_kind,
             milestone_percent_basis_points,
             milestone_label,
@@ -412,8 +451,8 @@ fn create_invoice_with_database(
             deleted_at
          ) VALUES (
             ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
-            ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19,
-            ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?28, NULL
+            ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20,
+            ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?29, NULL
          )",
         params![
             id,
@@ -421,6 +460,7 @@ fn create_invoice_with_database(
             client_id,
             seller.profile_id,
             invoice_number,
+            milestone_id,
             milestone_kind,
             milestone_percent_basis_points,
             milestone_label,
@@ -2412,6 +2452,7 @@ mod tests {
         CreateInvoiceInput {
             project_id: TEST_PROJECT_ID.into(),
             client_id: TEST_CLIENT_ID.into(),
+            milestone_id: None,
             milestone_kind: "kickoff".into(),
             milestone_percent_basis_points: None,
             milestone_label: None,
@@ -2638,6 +2679,87 @@ mod tests {
         assert!(matches!(
             issue_draft_invoice_with_database(&database, created.id),
             Err(AppError::InvalidInput(_))
+        ));
+    }
+
+    fn insert_project_milestone(
+        database: &Database,
+        id: &str,
+        kind: &str,
+        label: &str,
+        amount_minor: i64,
+    ) {
+        let connection = database.lock().unwrap();
+        let now = utc_now();
+        connection
+            .execute(
+                "INSERT INTO project_milestones (
+                    id, project_id, label, amount_minor, kind, sort_order,
+                    created_at, updated_at, deleted_at
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?6, NULL)",
+                params![id, TEST_PROJECT_ID, label, amount_minor, kind, now],
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn create_invoice_links_milestone_and_maps_non_billable_kind_to_custom() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-1", "phase", "Phase 1", 20_000);
+
+        let mut input = invoice_input("issued", "2099-01-01", 20_000);
+        input.milestone_id = Some("milestone-1".into());
+        let created = create_invoice_with_database(&database, input).unwrap();
+
+        assert_eq!(created.milestone_kind, "custom");
+        assert_eq!(created.milestone_label.as_deref(), Some("Phase 1"));
+
+        let connection = database.lock().unwrap();
+        let stored_milestone_id: Option<String> = connection
+            .query_row(
+                "SELECT milestone_id FROM invoices WHERE id = ?1",
+                params![created.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored_milestone_id.as_deref(), Some("milestone-1"));
+    }
+
+    #[test]
+    fn create_invoice_rejects_a_second_active_invoice_for_the_same_milestone() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-1", "kickoff", "Kickoff", 20_000);
+
+        let mut first_input = invoice_input("issued", "2099-01-01", 20_000);
+        first_input.milestone_id = Some("milestone-1".into());
+        let created = create_invoice_with_database(&database, first_input).unwrap();
+        assert_eq!(created.milestone_kind, "kickoff");
+
+        let mut second_input = invoice_input("issued", "2099-01-02", 5_000);
+        second_input.milestone_id = Some("milestone-1".into());
+        assert!(matches!(
+            create_invoice_with_database(&database, second_input),
+            Err(AppError::InvalidInput(_))
+        ));
+
+        // Voiding the first invoice frees the milestone up for re-invoicing.
+        void_invoice_with_database(&database, created.id.clone(), true).unwrap();
+
+        let mut third_input = invoice_input("issued", "2099-01-03", 5_000);
+        third_input.milestone_id = Some("milestone-1".into());
+        let recreated = create_invoice_with_database(&database, third_input).unwrap();
+        assert_eq!(recreated.milestone_kind, "kickoff");
+        assert_eq!(recreated.milestone_label.as_deref(), Some("Kickoff"));
+    }
+
+    #[test]
+    fn create_invoice_rejects_unknown_milestone_id() {
+        let database = finance_test_database("Milestone seller");
+        let mut input = invoice_input("issued", "2099-01-01", 10_000);
+        input.milestone_id = Some("does-not-exist".into());
+        assert!(matches!(
+            create_invoice_with_database(&database, input),
+            Err(AppError::NotFound(_))
         ));
     }
 
