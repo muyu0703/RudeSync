@@ -884,12 +884,20 @@ fn load_project_milestones(
     // the LEFT JOIN, rather than issuing one query per milestone from Rust.
     // That keeps list_projects (which calls this once per project) at O(1)
     // queries per project instead of O(milestones).
+    // Defense in depth: even though invoice creation/update already keeps
+    // milestone_id pointed at a milestone in the invoice's own project, the
+    // join here also requires the invoice's project_id to match the
+    // milestone's project_id. That way a row that somehow ends up with a
+    // milestone_id belonging to a different project (e.g. a bug elsewhere)
+    // can never colour this milestone's status.
     let mut stmt = connection.prepare(
         "SELECT m.id, m.label, m.amount_minor, m.kind, m.sort_order, i.status
          FROM project_milestones m
          LEFT JOIN invoices i ON i.id = (
              SELECT id FROM invoices
-             WHERE milestone_id = m.id AND deleted_at IS NULL AND status <> 'void'
+             WHERE milestone_id = m.id
+               AND project_id = m.project_id
+               AND deleted_at IS NULL AND status <> 'void'
              ORDER BY created_at DESC LIMIT 1
          )
          WHERE m.project_id = ?1 AND m.deleted_at IS NULL
@@ -1547,5 +1555,49 @@ mod tests {
             .unwrap();
         let reloaded = load_project(&connection, &project.id, false).unwrap();
         assert_eq!(reloaded.milestones[0].status, "not-invoiced");
+    }
+
+    #[test]
+    fn milestone_status_ignores_an_invoice_whose_project_id_no_longer_matches_the_milestone() {
+        // Simulates the state a stale link would leave behind: an invoice
+        // row whose milestone_id still points at milestone A, but whose
+        // project_id has since moved to project B (e.g. the invoice's draft
+        // was reassigned to a different project). Even though the DB-level
+        // milestone_id column literally matches, the invoice no longer
+        // belongs to milestone A's project, so it must not colour milestone
+        // A's status. This is the defense-in-depth join condition, exercised
+        // directly against a mismatched row rather than through the
+        // finance.rs update path that normally prevents this state from
+        // occurring in the first place.
+        let connection = milestones_test_connection();
+        let project_a = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: None,
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        )
+        .unwrap();
+        let milestone_a_id = project_a.milestones[0].id.clone();
+
+        let project_b = create_project_in_connection(&connection, milestone_project_input(None))
+            .unwrap();
+
+        connection
+            .execute(
+                "INSERT INTO invoices (id, project_id, milestone_id, status, created_at, deleted_at)
+                 VALUES ('invoice-1', ?1, ?2, 'draft', '2026-07-23T00:00:00Z', NULL)",
+                params![project_b.id, milestone_a_id],
+            )
+            .unwrap();
+
+        let reloaded = load_project(&connection, &project_a.id, false).unwrap();
+        assert_eq!(
+            reloaded.milestones[0].status, "not-invoiced",
+            "an invoice belonging to a different project must not mark this milestone as invoiced"
+        );
     }
 }

@@ -594,16 +594,16 @@ fn update_draft_invoice_with_database(
     let mut connection = database.lock()?;
     ensure_finance_schema_compatibility(&connection)?;
     let transaction = connection.transaction()?;
-    let current: Option<(String, String, String)> = transaction
+    let current: Option<(String, String, String, Option<String>)> = transaction
         .query_row(
-            "SELECT status, issue_date, invoice_number
+            "SELECT status, issue_date, invoice_number, milestone_id
              FROM invoices
              WHERE id = ?1 AND deleted_at IS NULL",
             params![invoice_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .optional()?;
-    let (current_status, current_issue_date, current_number) =
+    let (current_status, current_issue_date, current_number, current_milestone_id) =
         current.ok_or_else(|| AppError::NotFound("Invoice not found.".into()))?;
     if current_status != "draft" {
         return Err(AppError::InvalidInput(
@@ -636,6 +636,36 @@ fn update_draft_invoice_with_database(
                 _ => None,
             }
         });
+
+    // `UpdateDraftInvoiceInput` has no `milestoneId` field, so editing a draft
+    // never sets a new link — but it does let the user change `project_id`,
+    // and a milestone link that was valid for the old project is not
+    // necessarily valid for the new one. If we left `milestone_id` as-is, the
+    // draft would keep reporting the old milestone as "invoiced" in a
+    // project it no longer belongs to, permanently blocking that milestone
+    // from being re-invoiced with no way to recover short of manually
+    // voiding this invoice. Re-check the existing link against the
+    // (possibly new) project here, inside the same transaction, and drop it
+    // if it no longer belongs. This only ever clears the link; it never
+    // rejects the edit, and the milestone_label/milestone_kind snapshot
+    // columns are left untouched either way.
+    let milestone_id = match current_milestone_id {
+        Some(milestone_id) => {
+            let still_belongs: i64 = transaction.query_row(
+                "SELECT COUNT(*) FROM project_milestones
+                 WHERE id = ?1 AND project_id = ?2 AND deleted_at IS NULL",
+                params![milestone_id, project_id],
+                |row| row.get(0),
+            )?;
+            if still_belongs > 0 {
+                Some(milestone_id)
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+
     let seller = load_seller_snapshot(&transaction)?;
     let payment_instructions =
         requested_payment_instructions.or_else(|| seller.payment_instructions.clone());
@@ -677,7 +707,8 @@ fn update_draft_invoice_with_database(
              seller_email = ?24,
              seller_address = ?25,
              seller_logo_path = ?26,
-             updated_at = ?27
+             updated_at = ?27,
+             milestone_id = ?28
          WHERE id = ?1 AND status = 'draft' AND deleted_at IS NULL",
         params![
             invoice_id,
@@ -707,6 +738,7 @@ fn update_draft_invoice_with_database(
             seller.address,
             seller.logo_path,
             now,
+            milestone_id,
         ],
     )?;
     if affected == 0 {
@@ -2833,6 +2865,58 @@ mod tests {
             create_invoice_with_database(&database, input),
             Err(AppError::NotFound(_))
         ));
+    }
+
+    #[test]
+    fn updating_a_draft_invoice_to_a_different_project_clears_a_stale_milestone_link() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-a", "phase", "Project A phase", 20_000);
+
+        const OTHER_PROJECT_ID: &str = "project-2";
+        {
+            let connection = database.lock().unwrap();
+            let now = utc_now();
+            connection
+                .execute(
+                    "INSERT INTO projects (
+                        id, client_id, name, currency, quoted_total_minor,
+                        kickoff_percent_basis_points, kickoff_label,
+                        completion_percent_basis_points, completion_label,
+                        created_at, updated_at
+                     ) VALUES (
+                        ?1, ?2, 'Other project', 'USD', 100000,
+                        5000, 'Kickoff', 5000, 'Completion', ?3, ?3
+                     )",
+                    params![OTHER_PROJECT_ID, TEST_CLIENT_ID, now],
+                )
+                .unwrap();
+        }
+
+        let mut input = invoice_input("draft", "2099-01-01", 20_000);
+        input.milestone_id = Some("milestone-a".into());
+        let created = create_invoice_with_database(&database, input).unwrap();
+        assert_eq!(created.milestone_label.as_deref(), Some("Project A phase"));
+
+        // Draft still targets project A and is linked to milestone A: editing
+        // it to move it to project B ("OTHER_PROJECT_ID") must not leave
+        // milestone_id pointing at a milestone owned by a project the
+        // invoice no longer belongs to. Rather than rejecting the edit
+        // (changing a draft's project is legitimate), the stale link is
+        // cleared, which frees milestone A up for re-invoicing.
+        let mut update_input = draft_update_input(&created.id, "2099-01-05", 20_000);
+        update_input.project_id = OTHER_PROJECT_ID.into();
+        let updated = update_draft_invoice_with_database(&database, update_input).unwrap();
+        assert_eq!(updated.project_id, OTHER_PROJECT_ID);
+
+        let connection = database.lock().unwrap();
+        let stored_milestone_id: Option<String> = connection
+            .query_row(
+                "SELECT milestone_id FROM invoices WHERE id = ?1",
+                params![created.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored_milestone_id, None);
     }
 
     #[test]
