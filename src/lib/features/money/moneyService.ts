@@ -11,11 +11,13 @@ import type {
   Invoice,
   InvoiceLineItem,
   InvoicePayment,
+  InvoiceProjectMilestone,
   InvoiceProjectOption,
   InvoiceStatus,
   InvoiceTermKind,
   LoanFrequency,
   LoanInstallment,
+  MilestoneStatus,
   MoneyService,
   PersonalLoan,
   RecordInvoicePaymentInput,
@@ -84,6 +86,10 @@ function integer(value: unknown, fallback = 0): number {
 function normalizeCurrency(value: unknown): string {
   const currency = String(value ?? "USD").trim().toUpperCase();
   return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+}
+
+function normalizeMilestoneStatus(value: unknown): MilestoneStatus {
+  return value === "invoiced" || value === "paid" ? value : "not-invoiced";
 }
 
 function basisPointsToPercentage(value: number): string {
@@ -551,6 +557,7 @@ function invoiceBackendPayload(
   return {
     projectId: normalized.projectId,
     clientId: normalized.clientId,
+    milestoneId: normalized.milestoneId ?? undefined,
     milestoneKind: normalized.milestoneKind ?? "custom",
     milestoneLabel: normalized.milestoneLabel,
     milestonePercentBasisPoints:
@@ -699,54 +706,23 @@ function projectOptionsFromValues(
         integer(field(raw, "quotedTotalMinor", "quoted_total_minor")),
       );
       const storedMilestones = parseJsonArray(raw.milestones);
-      const milestoneValues =
-        storedMilestones.length > 0
-          ? storedMilestones
-          : [
-              {
-                kind: "kickoff",
-                label:
-                  field(raw, "kickoffLabel", "kickoff_label") ??
-                  "Kickoff",
-                percentBasisPoints: field(
-                  raw,
-                  "kickoffPercentBasisPoints",
-                  "kickoff_percent_basis_points",
-                ),
-              },
-              {
-                kind: "completion",
-                label:
-                  field(raw, "completionLabel", "completion_label") ??
-                  "Completion",
-                percentBasisPoints: field(
-                  raw,
-                  "completionPercentBasisPoints",
-                  "completion_percent_basis_points",
-                ),
-              },
-            ];
-      const milestones = milestoneValues.map((milestone) => {
-        const item = (milestone ?? {}) as Record<string, unknown>;
-        const percentBasisPoints = Math.max(
-          0,
-          integer(
-            field(
-              item,
-              "percentBasisPoints",
-              "percent_basis_points",
+      const milestones = storedMilestones
+        .map((milestone): InvoiceProjectMilestone => {
+          const item = (milestone ?? {}) as Record<string, unknown>;
+          return {
+            id: String(item.id ?? ""),
+            label: String(item.label ?? "Milestone"),
+            amountMinor: Math.max(
+              0,
+              integer(field(item, "amountMinor", "amount_minor")),
             ),
-          ),
-        );
-        return {
-          kind: String(item.kind ?? "milestone"),
-          label: String(item.label ?? "Milestone"),
-          percentBasisPoints,
-          suggestedAmountMinor: Math.round(
-            (quotedTotalMinor * percentBasisPoints) / 10_000,
-          ),
-        };
-      });
+            kind: String(item.kind ?? "custom"),
+            sortOrder: integer(field(item, "sortOrder", "sort_order")),
+            status: normalizeMilestoneStatus(item.status),
+          };
+        })
+        .filter((milestone) => milestone.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
       return {
         id: String(raw.id ?? ""),
         name: String(raw.name ?? "Untitled project"),

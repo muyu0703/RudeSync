@@ -58,7 +58,7 @@
   let editingInvoiceId: string | null = null;
 
   let invoiceProjectId = "";
-  let invoiceMilestoneKind = "";
+  let invoiceMilestoneId = "";
   let invoiceIssueDate = today;
   let invoiceTerm: InvoiceTermKind = "14-days";
   let defaultInvoiceTerm: InvoiceTermKind = "14-days";
@@ -91,7 +91,7 @@
     projects.find((project) => project.id === invoiceProjectId) ?? null;
   $: selectedMilestone =
     selectedProject?.milestones.find(
-      (milestone) => milestone.kind === invoiceMilestoneKind,
+      (milestone) => milestone.id === invoiceMilestoneId,
     ) ?? null;
   $: invoiceDueDate = getInvoiceDueDate();
   $: invoiceNumberPreview = getInvoiceNumberPreview();
@@ -323,7 +323,10 @@
   function editDraftInvoice(invoice: Invoice): void {
     editingInvoiceId = invoice.id;
     invoiceProjectId = invoice.projectId;
-    invoiceMilestoneKind = invoice.milestoneKind;
+    // Draft invoices don't round-trip a milestoneId from the backend
+    // (only milestoneKind/milestoneLabel are snapshotted), so the picker
+    // starts unselected here; existing line items are preserved as-is.
+    invoiceMilestoneId = "";
     invoiceIssueDate = invoice.issueDate;
     invoiceTerm = invoice.termKind;
     invoiceCustomDueDate = invoice.dueDate;
@@ -347,16 +350,27 @@
     showLoanForm = false;
   }
 
+  // The backend's milestone_kind CHECK on invoices only allows
+  // kickoff|completion|custom; a linked milestone's finer-grained kind
+  // (phase/weekly/additional/custom) is snapshotted under "custom" there,
+  // so the request must already use that mapping to pass validation.
+  function backendMilestoneKind(kind: string | undefined): string {
+    return kind === "kickoff" || kind === "completion" ? kind : "custom";
+  }
+
   function applyProjectDefaults(): void {
     const project = projects.find((item) => item.id === invoiceProjectId);
-    invoiceMilestoneKind = project?.milestones[0]?.kind ?? "";
+    const defaultMilestone = project?.milestones.find(
+      (milestone) => milestone.status === "not-invoiced",
+    );
+    invoiceMilestoneId = defaultMilestone?.id ?? "";
     applyMilestoneDefaults();
   }
 
   function applyMilestoneDefaults(): void {
     const project = projects.find((item) => item.id === invoiceProjectId);
     const milestone = project?.milestones.find(
-      (item) => item.kind === invoiceMilestoneKind,
+      (item) => item.id === invoiceMilestoneId,
     );
     if (!milestone) return;
     invoiceLines = [
@@ -364,7 +378,7 @@
         id: makeId(),
         description: `${project?.name ?? "Project"} — ${milestone.label}`,
         quantity: "1",
-        unitPrice: minorInput(milestone.suggestedAmountMinor),
+        unitPrice: minorInput(milestone.amountMinor),
       },
     ];
   }
@@ -405,9 +419,9 @@
       clientId: selectedProject.clientId,
       projectName: selectedProject.name,
       clientName: selectedProject.clientName,
-      milestoneKind: selectedMilestone?.kind ?? invoiceMilestoneKind ?? "custom",
-      milestonePercentBasisPoints:
-        selectedMilestone?.percentBasisPoints ?? null,
+      milestoneId: selectedMilestone?.id ?? null,
+      milestoneKind: backendMilestoneKind(selectedMilestone?.kind),
+      milestonePercentBasisPoints: null,
       milestoneLabel: selectedMilestone?.label ?? null,
       issueDate: invoiceIssueDate,
       dueDate: invoiceDueDate,
@@ -467,7 +481,7 @@
   function resetInvoiceForm(): void {
     editingInvoiceId = null;
     invoiceProjectId = "";
-    invoiceMilestoneKind = "";
+    invoiceMilestoneId = "";
     invoiceIssueDate = today;
     invoiceTerm = defaultInvoiceTerm;
     invoiceCustomDueDate = addDays(today, 14);
@@ -972,14 +986,18 @@
             </label>
             <label>
               <span>Milestone</span>
-              <select bind:value={invoiceMilestoneKind} on:change={applyMilestoneDefaults}>
+              <select bind:value={invoiceMilestoneId} on:change={applyMilestoneDefaults}>
+                <option value="">Custom invoice</option>
                 {#if selectedProject?.milestones.length}
                   {#each selectedProject.milestones as milestone}
-                    <option value={milestone.kind}>
-                      {milestone.label} ({milestone.percentBasisPoints / 100}%)
+                    <option
+                      value={milestone.id}
+                      disabled={milestone.status !== "not-invoiced"}
+                    >
+                      {milestone.label} — {formatMoney(milestone.amountMinor, selectedProject?.currency)} ({milestone.status})
                     </option>
                   {/each}
-                {:else}<option value="">Custom invoice</option>{/if}
+                {/if}
               </select>
             </label>
             <label>

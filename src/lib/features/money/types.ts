@@ -25,11 +25,15 @@ export type LoanFrequency =
   | "twice-monthly"
   | "custom";
 
+export type MilestoneStatus = "not-invoiced" | "invoiced" | "paid";
+
 export interface InvoiceProjectMilestone {
-  kind: string;
+  id: string;
   label: string;
-  percentBasisPoints: number;
-  suggestedAmountMinor: number;
+  amountMinor: number;
+  kind: string;
+  sortOrder: number;
+  status: MilestoneStatus;
 }
 
 export interface InvoiceProjectOption {
@@ -92,6 +96,7 @@ export interface CreateInvoiceInput {
   clientId: string;
   projectName: string;
   clientName: string;
+  milestoneId?: string | null;
   milestoneKind?: string | null;
   milestonePercentBasisPoints?: number | null;
   milestoneLabel?: string | null;
