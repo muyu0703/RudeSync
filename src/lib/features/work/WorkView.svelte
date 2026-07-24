@@ -12,12 +12,14 @@
   import ProjectForm from "./components/ProjectForm.svelte";
   import WorkDialog from "./components/WorkDialog.svelte";
   import WorkEntryForm from "./components/WorkEntryForm.svelte";
+  import { planTotalMinor } from "./milestonePlans";
   import { createWorkService } from "./workService";
   import type {
     Client,
     CreateClientInput,
     CreateProjectInput,
     CreateWorkEntryInput,
+    MilestoneStatus,
     Project,
     ProjectMilestone,
     WorkEntry,
@@ -321,19 +323,24 @@
     }).format(date);
   }
 
-  function milestoneAmount(
-    project: Project,
+  function milestoneEffectiveStatus(
     milestone: ProjectMilestone,
-  ): number {
-    return Math.round(
-      (project.quotedTotalMinor * milestone.percentBasisPoints) / 10000,
-    );
+  ): MilestoneStatus {
+    return milestone.status ?? "not-invoiced";
   }
 
-  function percentage(basisPoints: number): string {
-    return `${new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 2,
-    }).format(basisPoints / 100)}%`;
+  function milestoneStatusLabel(status: MilestoneStatus): string {
+    if (status === "paid") return "Paid";
+    if (status === "invoiced") return "Invoiced";
+    return "Not invoiced";
+  }
+
+  function remainingToInvoiceMinor(project: Project): number {
+    return project.milestones
+      .filter(
+        (milestone) => milestoneEffectiveStatus(milestone) === "not-invoiced",
+      )
+      .reduce((sum, milestone) => sum + milestone.amountMinor, 0);
   }
 
   function workForProject(projectId: string): WorkEntry[] {
@@ -519,15 +526,24 @@
                 </div>
               {/if}
 
+              <div class="milestone-section-header">
+                <span>Invoice milestones</span>
+                <b>
+                  {formatMoney(planTotalMinor(project.milestones), project.currency)} total ·
+                  {formatMoney(remainingToInvoiceMinor(project), project.currency)} remaining
+                </b>
+              </div>
               <div class="milestone-grid" aria-label={`${project.name} invoice milestones`}>
-                {#each project.milestones as milestone, index (`${project.id}-${milestone.kind}`)}
+                {#each project.milestones as milestone, index (milestone.id ?? `${project.id}-${milestone.kind}-${index}`)}
                   <div class="milestone">
                     <span class="milestone-index">{String(index + 1).padStart(2, "0")}</span>
                     <div>
                       <span>{milestone.label}</span>
-                      <strong>{formatMoney(milestoneAmount(project, milestone), project.currency)}</strong>
+                      <strong>{formatMoney(milestone.amountMinor, project.currency)}</strong>
                     </div>
-                    <b>{percentage(milestone.percentBasisPoints)}</b>
+                    <span class={`invoice-status ${milestoneEffectiveStatus(milestone)}`}>
+                      {milestoneStatusLabel(milestoneEffectiveStatus(milestone))}
+                    </span>
                   </div>
                 {/each}
               </div>
@@ -1236,11 +1252,34 @@
     font-size: 9.5px;
   }
 
+  .milestone-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    margin-bottom: 8px;
+  }
+
+  .milestone-section-header span {
+    color: var(--text-faint, #536158);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .milestone-section-header b {
+    color: var(--text-muted, #75847b);
+    font-size: 8.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
   .milestone-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-top: 14px;
   }
 
   .milestone {
@@ -1287,12 +1326,6 @@
     font-size: 9px;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
-  }
-
-  .milestone > b {
-    color: var(--accent, #43d17f);
-    font-size: 10px;
-    font-weight: 700;
   }
 
   .project-billing {
@@ -1414,7 +1447,8 @@
   }
 
   .invoice-status.partially-paid,
-  .invoice-status.overdue {
+  .invoice-status.overdue,
+  .invoice-status.invoiced {
     color: var(--amber, #e6b85c);
     background: var(--amber-soft, rgba(230, 184, 92, 0.1));
   }
