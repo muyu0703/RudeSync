@@ -86,54 +86,47 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function normalizeMilestones(
-  value: unknown,
-  kickoffBasisPoints: number,
-  completionBasisPoints: number,
-  kickoffLabel = "Kickoff",
-  completionLabel = "Completion",
-): ProjectMilestone[] {
-  if (Array.isArray(value) && value.length >= 2) {
-    const normalized = value
-      .map((item, index): ProjectMilestone | null => {
-        const raw = (item ?? {}) as Record<string, unknown>;
-        const kind =
-          raw.kind === "kickoff" || raw.kind === "completion"
-            ? raw.kind
-            : index === 0
-              ? "kickoff"
-              : "completion";
-        const fallback = kind === "kickoff" ? 5000 : 5000;
-        const percentBasisPoints = safeInteger(
-          valueFrom(raw, "percentBasisPoints", "percent_basis_points"),
-          fallback,
-        );
-        const defaultLabel = kind === "kickoff" ? "Kickoff" : "Completion";
-        return {
-          kind,
-          label: String(raw.label ?? defaultLabel).trim() || defaultLabel,
-          percentBasisPoints,
-        };
-      })
-      .filter((item): item is ProjectMilestone => item !== null);
+const MILESTONE_KINDS = [
+  "kickoff",
+  "completion",
+  "phase",
+  "weekly",
+  "additional",
+  "custom",
+] as const;
 
-    const kickoff = normalized.find((item) => item.kind === "kickoff");
-    const completion = normalized.find((item) => item.kind === "completion");
-    if (kickoff && completion) return [kickoff, completion];
-  }
+const MILESTONE_STATUSES = ["not-invoiced", "invoiced", "paid"] as const;
 
-  return [
-    {
-      kind: "kickoff",
-      label: kickoffLabel,
-      percentBasisPoints: kickoffBasisPoints,
-    },
-    {
-      kind: "completion",
-      label: completionLabel,
-      percentBasisPoints: completionBasisPoints,
-    },
-  ];
+function normalizeMilestones(value: unknown): ProjectMilestone[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item, index): ProjectMilestone => {
+    const raw = (item ?? {}) as Record<string, unknown>;
+    const kind = MILESTONE_KINDS.includes(raw.kind as (typeof MILESTONE_KINDS)[number])
+      ? (raw.kind as ProjectMilestone["kind"])
+      : "custom";
+    const status = MILESTONE_STATUSES.includes(
+      raw.status as (typeof MILESTONE_STATUSES)[number],
+    )
+      ? (raw.status as ProjectMilestone["status"])
+      : undefined;
+    const id = stringOrNull(raw.id) ?? undefined;
+
+    return {
+      ...(id ? { id } : {}),
+      label: String(raw.label ?? "").trim(),
+      amountMinor: Math.max(
+        0,
+        safeInteger(valueFrom(raw, "amountMinor", "amount_minor")),
+      ),
+      kind,
+      sortOrder: safeInteger(
+        valueFrom(raw, "sortOrder", "sort_order"),
+        index,
+      ),
+      ...(status ? { status } : {}),
+    };
+  });
 }
 
 function parseClient(value: unknown): Client {
@@ -159,22 +152,6 @@ function parseClient(value: unknown): Client {
 
 function parseProject(value: unknown): Project {
   const raw = (value ?? {}) as Record<string, unknown>;
-  const kickoffBasisPoints = safeInteger(
-    valueFrom(
-      raw,
-      "kickoffPercentBasisPoints",
-      "kickoff_percent_basis_points",
-    ),
-    5000,
-  );
-  const completionBasisPoints = safeInteger(
-    valueFrom(
-      raw,
-      "completionPercentBasisPoints",
-      "completion_percent_basis_points",
-    ),
-    5000,
-  );
   const rawStatus = String(raw.status ?? "active");
   const status: ProjectStatus = (
     ["draft", "active", "completed", "archived"] as const
@@ -193,18 +170,7 @@ function parseProject(value: unknown): Project {
     quotedTotalMinor: safeInteger(
       valueFrom(raw, "quotedTotalMinor", "quoted_total_minor"),
     ),
-    milestones: normalizeMilestones(
-      raw.milestones,
-      kickoffBasisPoints,
-      completionBasisPoints,
-      String(
-        valueFrom(raw, "kickoffLabel", "kickoff_label") ?? "Kickoff",
-      ),
-      String(
-        valueFrom(raw, "completionLabel", "completion_label") ??
-          "Completion",
-      ),
-    ),
+    milestones: normalizeMilestones(raw.milestones),
     startDate: stringOrNull(valueFrom(raw, "startDate", "start_date")),
     dueDate: stringOrNull(valueFrom(raw, "dueDate", "due_date")),
     completedAt: stringOrNull(
@@ -276,10 +242,14 @@ function normalizeClientInput(input: CreateClientInput): CreateClientInput {
 }
 
 function normalizeProjectInput(input: CreateProjectInput): CreateProjectInput {
-  const milestones = input.milestones.map((milestone) => ({
-    ...milestone,
+  const milestones = input.milestones.map((milestone, index) => ({
+    ...(milestone.id ? { id: milestone.id } : {}),
     label: milestone.label.trim(),
-    percentBasisPoints: Math.round(milestone.percentBasisPoints),
+    amountMinor: Math.max(0, Math.round(milestone.amountMinor)),
+    kind: milestone.kind,
+    sortOrder: Number.isSafeInteger(milestone.sortOrder)
+      ? milestone.sortOrder
+      : index,
   }));
   return {
     clientId: input.clientId,
@@ -304,32 +274,6 @@ function normalizeWorkEntryInput(
     details: compactText(input.details),
     workDate: input.workDate || localIsoDay(),
     urls: (input.urls ?? []).map((url) => url.trim()).filter(Boolean),
-  };
-}
-
-function projectInvokeInput(
-  input: CreateProjectInput,
-): Record<string, unknown> {
-  const normalized = normalizeProjectInput(input);
-  const kickoff =
-    normalized.milestones.find((item) => item.kind === "kickoff")
-      ?.percentBasisPoints ?? 5000;
-  const completion =
-    normalized.milestones.find((item) => item.kind === "completion")
-      ?.percentBasisPoints ?? 5000;
-  const kickoffLabel =
-    normalized.milestones.find((item) => item.kind === "kickoff")?.label ??
-    "Kickoff";
-  const completionLabel =
-    normalized.milestones.find((item) => item.kind === "completion")?.label ??
-    "Completion";
-
-  return {
-    ...normalized,
-    kickoffPercentBasisPoints: kickoff,
-    kickoffLabel,
-    completionPercentBasisPoints: completion,
-    completionLabel,
   };
 }
 
@@ -429,13 +373,6 @@ class BrowserWorkService implements WorkService {
     if (!Number.isSafeInteger(normalized.quotedTotalMinor)) {
       throw new Error("Project value is invalid.");
     }
-    const milestoneTotal = normalized.milestones.reduce(
-      (sum, milestone) => sum + milestone.percentBasisPoints,
-      0,
-    );
-    if (milestoneTotal !== 10000) {
-      throw new Error("Milestone percentages must total 100%.");
-    }
 
     const state = this.read();
     if (!state.clients.some((client) => client.id === normalized.clientId)) {
@@ -466,13 +403,6 @@ class BrowserWorkService implements WorkService {
     if (!normalized.name) throw new Error("Project name is required.");
     if (!Number.isSafeInteger(normalized.quotedTotalMinor)) {
       throw new Error("Project value is invalid.");
-    }
-    const milestoneTotal = normalized.milestones.reduce(
-      (sum, milestone) => sum + milestone.percentBasisPoints,
-      0,
-    );
-    if (milestoneTotal !== 10000) {
-      throw new Error("Milestone percentages must total 100%.");
     }
 
     const state = this.read();
@@ -602,7 +532,7 @@ class TauriWorkService implements WorkService {
 
   async createProject(input: CreateProjectInput): Promise<Project> {
     const row = await this.invoke<unknown>(WORK_COMMANDS.createProject, {
-      input: projectInvokeInput(input),
+      input: normalizeProjectInput(input),
     });
     return parseProject(row);
   }
@@ -613,7 +543,7 @@ class TauriWorkService implements WorkService {
   ): Promise<Project> {
     const row = await this.invoke<unknown>(WORK_COMMANDS.updateProject, {
       id,
-      input: projectInvokeInput(input),
+      input: normalizeProjectInput(input),
     });
     return parseProject(row);
   }

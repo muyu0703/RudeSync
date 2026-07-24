@@ -6,6 +6,12 @@
     ProjectMilestone,
     ProjectStatus,
   } from "../types";
+  import {
+    evenWeekly,
+    kickoffCompletion,
+    phases,
+    planTotalMinor,
+  } from "../milestonePlans";
 
   export let clients: Client[] = [];
   export let initialClientId: string | null = null;
@@ -14,12 +20,23 @@
   export let onSave: (input: CreateProjectInput) => void | Promise<void>;
   export let onCancel: () => void;
 
-  const existingKickoff = project?.milestones.find(
-    (milestone) => milestone.kind === "kickoff",
-  );
-  const existingCompletion = project?.milestones.find(
-    (milestone) => milestone.kind === "completion",
-  );
+  type MilestoneRow = ProjectMilestone & { key: string };
+  type TemplateOption =
+    | "custom"
+    | "kickoff-completion"
+    | "even-weekly"
+    | "phases";
+
+  function uid(): string {
+    return typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `ms-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function toRow(milestone: ProjectMilestone): MilestoneRow {
+    return { ...milestone, key: milestone.id ?? uid() };
+  }
+
   let clientId =
     project?.clientId ?? initialClientId ?? clients[0]?.id ?? "";
   let name = project?.name ?? "";
@@ -31,12 +48,15 @@
     : "";
   let startDate = project?.startDate ?? "";
   let dueDate = project?.dueDate ?? "";
-  let kickoffLabel = existingKickoff?.label ?? "Kickoff";
-  let kickoffPercent =
-    (existingKickoff?.percentBasisPoints ?? 5000) / 100;
-  let completionLabel = existingCompletion?.label ?? "Completion";
-  let completionPercent =
-    (existingCompletion?.percentBasisPoints ?? 5000) / 100;
+
+  let milestones: MilestoneRow[] = (project?.milestones ?? [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(toRow);
+
+  let template: TemplateOption = "custom";
+  let weeklyWeeks = 4;
+  let weeklyAmount = "";
 
   $: if (!clientId && clients.length) clientId = clients[0].id;
   $: selectedClient = clients.find((client) => client.id === clientId);
@@ -45,7 +65,7 @@
       ? project.currency
       : selectedClient?.currency ?? "USD";
   $: amountMinor = Math.round((Number(quotedValue) || 0) * 100);
-  $: milestoneTotal = kickoffPercent + completionPercent;
+  $: planTotal = planTotalMinor(milestones);
   $: datesInvalid = Boolean(startDate && dueDate && dueDate < startDate);
   $: urls = urlsFromText();
   $: urlsInvalid = urls.some(invalidUrl);
@@ -54,9 +74,6 @@
     !name.trim() ||
     !quotedValue ||
     amountMinor < 0 ||
-    milestoneTotal !== 100 ||
-    !kickoffLabel.trim() ||
-    !completionLabel.trim() ||
     datesInvalid ||
     urlsInvalid;
 
@@ -76,28 +93,82 @@
     }
   }
 
-  function formatMilestone(percent: number): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format((amountMinor * percent) / 10000);
+  function formatMoney(minor: number, currencyCode: string): string {
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(minor / 100);
+    } catch {
+      return `${currencyCode} ${(minor / 100).toLocaleString("en-US")}`;
+    }
+  }
+
+  function applyTemplate(): void {
+    let seeded: ProjectMilestone[];
+    switch (template) {
+      case "kickoff-completion":
+        seeded = kickoffCompletion(amountMinor);
+        break;
+      case "even-weekly": {
+        const perWeekMinor = Math.max(
+          0,
+          Math.round((Number(weeklyAmount) || 0) * 100),
+        );
+        seeded = evenWeekly(weeklyWeeks, perWeekMinor);
+        break;
+      }
+      case "phases":
+        seeded = phases(2);
+        break;
+      default:
+        seeded = [];
+        break;
+    }
+    milestones = seeded.map(toRow);
+  }
+
+  function setMilestoneAmount(index: number, raw: string): void {
+    const amountMinor = Math.max(0, Math.round((Number(raw) || 0) * 100));
+    milestones = milestones.map((row, i) =>
+      i === index ? { ...row, amountMinor } : row,
+    );
+  }
+
+  function moveMilestone(index: number, direction: -1 | 1): void {
+    const target = index + direction;
+    if (target < 0 || target >= milestones.length) return;
+    const next = [...milestones];
+    [next[index], next[target]] = [next[target], next[index]];
+    milestones = next.map((row, i) => ({ ...row, sortOrder: i }));
+  }
+
+  function removeMilestone(index: number): void {
+    milestones = milestones
+      .filter((_, i) => i !== index)
+      .map((row, i) => ({ ...row, sortOrder: i }));
+  }
+
+  function addMilestone(): void {
+    milestones = [
+      ...milestones,
+      {
+        key: uid(),
+        label: "",
+        amountMinor: 0,
+        kind: "custom",
+        sortOrder: milestones.length,
+      },
+    ];
   }
 
   function submit(): void {
     if (formInvalid || busy) return;
-    const milestones: ProjectMilestone[] = [
-      {
-        kind: "kickoff",
-        label: kickoffLabel,
-        percentBasisPoints: Math.round(kickoffPercent * 100),
-      },
-      {
-        kind: "completion",
-        label: completionLabel,
-        percentBasisPoints: Math.round(completionPercent * 100),
-      },
-    ];
+    const submittedMilestones: ProjectMilestone[] = milestones.map(
+      ({ key, status: _rowStatus, ...rest }) => rest,
+    );
     void onSave({
       clientId,
       name,
@@ -106,7 +177,7 @@
       status,
       currency,
       quotedTotalMinor: amountMinor,
-      milestones,
+      milestones: submittedMilestones,
       startDate,
       dueDate,
     });
@@ -199,39 +270,101 @@
 
   <fieldset>
     <legend>
-      <span>Invoice milestones</span>
-      <small class:invalid={milestoneTotal !== 100}>{milestoneTotal}% of 100%</small>
+      <span>Milestones</span>
+      <small>Plan total: {formatMoney(planTotal, currency)}</small>
     </legend>
 
-    <div class="milestone">
-      <span class="milestone-number">01</span>
+    <div class="template-row">
       <label>
-        <span>Label</span>
-        <input bind:value={kickoffLabel} maxlength="80" required />
+        <span>Template</span>
+        <select bind:value={template}>
+          <option value="custom">Custom / empty</option>
+          <option value="kickoff-completion">Kickoff + Completion</option>
+          <option value="even-weekly">Even weekly</option>
+          <option value="phases">Phase-by-phase</option>
+        </select>
       </label>
-      <label class="percent-field">
-        <span>Percent</span>
-        <div><input bind:value={kickoffPercent} type="number" min="0" max="100" step="0.01" required /><i>%</i></div>
-      </label>
-      <output>{formatMilestone(kickoffPercent)}</output>
+      {#if template === "even-weekly"}
+        <label class="template-param">
+          <span>Weeks</span>
+          <input bind:value={weeklyWeeks} type="number" min="1" step="1" />
+        </label>
+        <label class="template-param">
+          <span>Amount / week</span>
+          <div class="money-input">
+            <i>{currency}</i>
+            <input
+              bind:value={weeklyAmount}
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+            />
+          </div>
+        </label>
+      {/if}
+      <button class="secondary" type="button" on:click={applyTemplate}>
+        Apply template
+      </button>
     </div>
 
-    <div class="milestone">
-      <span class="milestone-number">02</span>
-      <label>
-        <span>Label</span>
-        <input bind:value={completionLabel} maxlength="80" required />
-      </label>
-      <label class="percent-field">
-        <span>Percent</span>
-        <div><input bind:value={completionPercent} type="number" min="0" max="100" step="0.01" required /><i>%</i></div>
-      </label>
-      <output>{formatMilestone(completionPercent)}</output>
-    </div>
+    {#each milestones as milestone, index (milestone.key)}
+      <div class="milestone">
+        <span class="milestone-number">{String(index + 1).padStart(2, "0")}</span>
+        <label>
+          <span>Label</span>
+          <input bind:value={milestone.label} maxlength="80" placeholder="Milestone label" />
+        </label>
+        <label class="amount-field">
+          <span>Amount</span>
+          <div class="money-input">
+            <i>{currency}</i>
+            <input
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              value={(milestone.amountMinor / 100).toFixed(2)}
+              on:input={(event) =>
+                setMilestoneAmount(index, event.currentTarget.value)}
+            />
+          </div>
+        </label>
+        <div class="row-actions">
+          <button
+            type="button"
+            disabled={index === 0}
+            aria-label="Move milestone up"
+            on:click={() => moveMilestone(index, -1)}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            disabled={index === milestones.length - 1}
+            aria-label="Move milestone down"
+            on:click={() => moveMilestone(index, 1)}
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            class="danger"
+            aria-label="Remove milestone"
+            on:click={() => removeMilestone(index)}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    {:else}
+      <p class="empty-hint">No milestones yet — pick a template or add one manually.</p>
+    {/each}
 
-    {#if milestoneTotal !== 100}
-      <p class="validation" role="alert">Kickoff and completion must total exactly 100%.</p>
-    {/if}
+    <button class="secondary add-milestone" type="button" on:click={addMilestone}>
+      + Add milestone
+    </button>
   </fieldset>
 
   <footer>
@@ -379,13 +512,25 @@
     font-weight: 650;
   }
 
-  legend small.invalid {
-    color: var(--danger, #ef766f);
+  .template-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .template-row > label {
+    min-width: 150px;
+  }
+
+  .template-param {
+    width: 120px;
   }
 
   .milestone {
     display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 100px 92px;
+    grid-template-columns: 32px minmax(0, 1fr) 150px 92px;
     align-items: end;
     gap: 10px;
   }
@@ -403,52 +548,43 @@
     border-radius: 50%;
   }
 
-  .percent-field > div {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 8px;
+  .row-actions {
+    display: flex;
+    gap: 6px;
   }
 
-  .percent-field > div:focus-within {
-    border-color: var(--accent, #43d17f);
-    outline: 1px solid var(--accent, #43d17f);
-  }
-
-  .percent-field input {
-    border: 0;
-    outline: 0;
-  }
-
-  .percent-field i {
-    padding-right: 10px;
-    color: var(--text-muted, #75847b);
-    font-size: 10px;
-    font-style: normal;
-  }
-
-  output {
-    align-self: center;
-    margin-top: 17px;
-    overflow: hidden;
+  .row-actions button {
+    min-height: 38px;
+    min-width: 30px;
+    padding: 0 8px;
     color: var(--text-secondary, #aebdb4);
-    font-size: 10px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    background: transparent;
+    border: 1px solid var(--border-strong, #2a3a31);
+  }
+
+  .row-actions button.danger {
+    color: var(--danger, #ef766f);
+    border-color: var(--border-strong, #2a3a31);
+  }
+
+  .row-actions button.danger:hover {
+    border-color: var(--danger, #ef766f);
+  }
+
+  .add-milestone {
+    justify-self: start;
+  }
+
+  .empty-hint {
+    margin: 2px 0;
+    color: var(--text-muted, #75847b);
+    font-size: 10.5px;
   }
 
   .validation {
     margin: -6px 0 0;
     color: var(--danger, #ef766f);
     font-size: 10px;
-  }
-
-  fieldset .validation {
-    margin: 1px 0 0 42px;
   }
 
   footer {
@@ -502,11 +638,7 @@
     }
 
     .milestone {
-      grid-template-columns: 32px minmax(0, 1fr) 90px;
-    }
-
-    output {
-      display: none;
+      grid-template-columns: 32px minmax(0, 1fr) 120px 92px;
     }
   }
 
@@ -524,7 +656,8 @@
       grid-template-columns: 30px minmax(0, 1fr);
     }
 
-    .percent-field {
+    .amount-field,
+    .row-actions {
       grid-column: 2;
     }
   }
