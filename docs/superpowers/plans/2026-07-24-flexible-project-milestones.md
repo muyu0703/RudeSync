@@ -128,42 +128,85 @@ In `src-tauri/src/lib.rs`, the test `initial_migration_and_defaults_apply_to_emp
 
 - [ ] **Step 4: Add a Rust test for the backfill**
 
+This test must prove the migration converts **pre-existing** legacy projects, so it
+applies migration 1, inserts legacy projects, and only then runs the remaining
+migrations. It follows the existing partial-migration test pattern in this file
+(see `reliability_migration_tolerates_compatibility_columns_added_early`).
+
 Add to the `#[cfg(test)]` module in `src-tauri/src/lib.rs`:
 
 ```rust
     #[test]
-    fn milestones_migration_backfills_two_rows_per_project() {
+    fn milestones_migration_backfills_existing_projects() {
         let mut connection = Connection::open_in_memory().unwrap();
-        apply_migrations(&mut connection).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    applied_at TEXT NOT NULL
+                );",
+            )
+            .unwrap();
+        connection.execute_batch(INITIAL_MIGRATION).unwrap();
         let now = utc_now();
         connection
             .execute(
-                "INSERT INTO projects (id, name, urls_json, status, currency,
-                    quoted_total_minor, kickoff_percent_basis_points, kickoff_label,
-                    completion_percent_basis_points, completion_label,
-                    created_at, updated_at)
-                 VALUES ('p1','P','[]','active','USD',300000,3000,'Deposit',7000,'Final',?1,?1)",
+                "INSERT INTO schema_migrations(version, applied_at) VALUES (1, ?1)",
                 params![now],
             )
             .unwrap();
-        // Re-run backfill logic by simulating a fresh project inserted before migration:
-        // Instead, assert the migration's INSERT..SELECT already ran for pre-existing rows.
-        // Here we insert milestones the same way the app will, then verify sum.
+        // Two legacy projects created under the old two-column milestone model.
+        // The second uses an odd total + 33.33% split to expose rounding drift.
         connection
             .execute(
-                "INSERT INTO project_milestones (id, project_id, label, amount_minor, kind, sort_order, created_at, updated_at)
-                 VALUES ('m1','p1','Deposit',90000,'kickoff',0,?1,?1), ('m2','p1','Final',210000,'completion',1,?1,?1)",
+                "INSERT INTO projects (
+                    id, name, urls_json, status, currency, quoted_total_minor,
+                    kickoff_percent_basis_points, kickoff_label,
+                    completion_percent_basis_points, completion_label,
+                    created_at, updated_at
+                 ) VALUES
+                 ('legacy-1','Even Split','[]','active','USD',300000,3000,'Deposit',7000,'Final',?1,?1),
+                 ('legacy-2','Odd Split','[]','active','USD',100001,3333,'Kickoff',6667,'Completion',?1,?1)",
                 params![now],
             )
             .unwrap();
-        let total: i64 = connection
-            .query_row(
-                "SELECT COALESCE(SUM(amount_minor),0) FROM project_milestones WHERE project_id='p1' AND deleted_at IS NULL",
-                [],
-                |r| r.get(0),
+
+        apply_migrations(&mut connection).unwrap();
+
+        let mut statement = connection
+            .prepare(
+                "SELECT label, amount_minor, kind, sort_order
+                 FROM project_milestones
+                 WHERE project_id = ?1 AND deleted_at IS NULL
+                 ORDER BY sort_order ASC",
             )
             .unwrap();
-        assert_eq!(total, 300000);
+        let load = |statement: &mut rusqlite::Statement<'_>, project_id: &str| {
+            statement
+                .query_map(params![project_id], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, i64>(3)?,
+                    ))
+                })
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
+        };
+
+        let first = load(&mut statement, "legacy-1");
+        assert_eq!(first.len(), 2);
+        assert_eq!(first[0], ("Deposit".into(), 90_000, "kickoff".into(), 0));
+        assert_eq!(first[1], ("Final".into(), 210_000, "completion".into(), 1));
+
+        // Completion takes the remainder, so an odd total re-sums exactly.
+        let second = load(&mut statement, "legacy-2");
+        assert_eq!(second.len(), 2);
+        assert_eq!(second[0].1, 33_330);
+        assert_eq!(second[1].1, 66_671);
+        assert_eq!(second[0].1 + second[1].1, 100_001);
     }
 ```
 
