@@ -879,18 +879,36 @@ fn load_project_milestones(
     connection: &Connection,
     project_id: &str,
 ) -> Result<Vec<Milestone>, AppError> {
+    // Single query per project: the correlated subquery resolves each
+    // milestone's latest active (non-void, non-deleted) invoice inline via
+    // the LEFT JOIN, rather than issuing one query per milestone from Rust.
+    // That keeps list_projects (which calls this once per project) at O(1)
+    // queries per project instead of O(milestones).
     let mut stmt = connection.prepare(
-        "SELECT id, label, amount_minor, kind, sort_order FROM project_milestones \
-         WHERE project_id = ?1 AND deleted_at IS NULL ORDER BY sort_order ASC, created_at ASC",
+        "SELECT m.id, m.label, m.amount_minor, m.kind, m.sort_order, i.status
+         FROM project_milestones m
+         LEFT JOIN invoices i ON i.id = (
+             SELECT id FROM invoices
+             WHERE milestone_id = m.id AND deleted_at IS NULL AND status <> 'void'
+             ORDER BY created_at DESC LIMIT 1
+         )
+         WHERE m.project_id = ?1 AND m.deleted_at IS NULL
+         ORDER BY m.sort_order ASC, m.created_at ASC",
     )?;
     let rows = stmt.query_map(params![project_id], |row| {
+        let invoice_status: Option<String> = row.get(5)?;
+        let status = match invoice_status.as_deref() {
+            None => "not-invoiced",
+            Some("paid") => "paid",
+            Some(_) => "invoiced",
+        };
         Ok(Milestone {
             id: row.get(0)?,
             label: row.get(1)?,
             amount_minor: row.get(2)?,
             kind: row.get(3)?,
             sort_order: row.get(4)?,
-            status: "not-invoiced".to_string(), // real status wired in Task 4
+            status: status.to_string(),
         })
     })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(AppError::from)
@@ -1066,7 +1084,11 @@ mod tests {
                     project_id TEXT NOT NULL,
                     project_name TEXT NOT NULL,
                     bill_to_name TEXT NOT NULL,
-                    milestone_label TEXT
+                    milestone_label TEXT,
+                    milestone_id TEXT,
+                    status TEXT NOT NULL DEFAULT 'issued',
+                    created_at TEXT NOT NULL DEFAULT '2026-07-23T00:00:00Z',
+                    deleted_at TEXT
                 );
                 CREATE TABLE project_milestones (
                     id TEXT PRIMARY KEY,
@@ -1195,6 +1217,14 @@ mod tests {
                     sort_order INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE invoices (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    milestone_id TEXT,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
                     deleted_at TEXT
                 );",
             )
@@ -1465,5 +1495,57 @@ mod tests {
             deleted_count, 0,
             "the pre-existing milestone must not have been soft-deleted by the rolled-back update"
         );
+    }
+
+    #[test]
+    fn milestone_status_tracks_its_active_invoice_lifecycle() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: None,
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        )
+        .unwrap();
+        let milestone_id = project.milestones[0].id.clone();
+
+        // No invoice yet.
+        let reloaded = load_project(&connection, &project.id, false).unwrap();
+        assert_eq!(reloaded.milestones[0].status, "not-invoiced");
+
+        // Issued invoice -> invoiced.
+        connection
+            .execute(
+                "INSERT INTO invoices (id, project_id, milestone_id, status, created_at, deleted_at)
+                 VALUES ('invoice-1', ?1, ?2, 'issued', '2026-07-23T00:00:00Z', NULL)",
+                params![project.id, milestone_id],
+            )
+            .unwrap();
+        let reloaded = load_project(&connection, &project.id, false).unwrap();
+        assert_eq!(reloaded.milestones[0].status, "invoiced");
+
+        // Paid invoice -> paid.
+        connection
+            .execute(
+                "UPDATE invoices SET status = 'paid' WHERE id = 'invoice-1'",
+                [],
+            )
+            .unwrap();
+        let reloaded = load_project(&connection, &project.id, false).unwrap();
+        assert_eq!(reloaded.milestones[0].status, "paid");
+
+        // Voided invoice -> back to not-invoiced.
+        connection
+            .execute(
+                "UPDATE invoices SET status = 'void' WHERE id = 'invoice-1'",
+                [],
+            )
+            .unwrap();
+        let reloaded = load_project(&connection, &project.id, false).unwrap();
+        assert_eq!(reloaded.milestones[0].status, "not-invoiced");
     }
 }
