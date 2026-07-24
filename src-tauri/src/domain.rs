@@ -311,10 +311,17 @@ pub(crate) fn create_project(
     input: CreateProjectInput,
 ) -> Result<Project, AppError> {
     let mut connection = database.lock()?;
+    create_project_atomic(&mut connection, input)
+}
+
+fn create_project_atomic(
+    connection: &mut Connection,
+    input: CreateProjectInput,
+) -> Result<Project, AppError> {
     let transaction = connection.transaction()?;
     let project = create_project_in_connection(&transaction, input)?;
     transaction.commit()?;
-    load_project(&connection, &project.id, false)
+    load_project(connection, &project.id, false)
 }
 
 fn create_project_in_connection(
@@ -365,10 +372,18 @@ pub(crate) fn update_project(
     input: CreateProjectInput,
 ) -> Result<Project, AppError> {
     let mut connection = database.lock()?;
+    update_project_atomic(&mut connection, &id, input)
+}
+
+fn update_project_atomic(
+    connection: &mut Connection,
+    id: &str,
+    input: CreateProjectInput,
+) -> Result<Project, AppError> {
     let transaction = connection.transaction()?;
-    let project = update_project_in_connection(&transaction, &id, input)?;
+    let project = update_project_in_connection(&transaction, id, input)?;
     transaction.commit()?;
-    load_project(&connection, &project.id, false)
+    load_project(connection, &project.id, false)
 }
 
 fn update_project_in_connection(
@@ -1416,12 +1431,13 @@ mod tests {
         .unwrap();
         let existing_milestone_id = project.milestones[0].id.clone();
 
-        // Mirror what the real create_project/update_project commands do:
-        // wrap the project update and the milestone sync in a single
-        // transaction, and only commit once every step has succeeded.
-        let transaction = connection.transaction().unwrap();
-        let result = update_project_in_connection(
-            &transaction,
+        // Exercise the exact helper that the `update_project` tauri command
+        // delegates to. If the transaction were ever removed from
+        // `update_project_atomic`, this call would still return an error
+        // (correct), but the partial writes made before the error would
+        // stick, and the assertions below would fail.
+        let result = update_project_atomic(
+            &mut connection,
             &project.id,
             milestone_project_input(Some(vec![MilestoneInput {
                 id: Some("does-not-exist".into()),
@@ -1432,10 +1448,6 @@ mod tests {
             }])),
         );
         assert!(matches!(result, Err(AppError::NotFound(_))));
-        // In the real command an error here means `transaction.commit()` is
-        // never reached, so the transaction rolls back on drop. Reproduce
-        // that here instead of committing.
-        drop(transaction);
 
         let reloaded = load_project(&connection, &project.id, false).unwrap();
         assert_eq!(reloaded.milestones.len(), 1);
