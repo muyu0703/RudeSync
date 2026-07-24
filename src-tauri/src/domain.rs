@@ -831,11 +831,16 @@ fn sync_project_milestones(
     for m in milestones {
         match &m.id {
             Some(id) => {
-                connection.execute(
+                let changed = connection.execute(
                     "UPDATE project_milestones SET label=?2, amount_minor=?3, kind=?4, sort_order=?5, updated_at=?6 \
                      WHERE id=?1 AND project_id=?7 AND deleted_at IS NULL",
                     params![id, m.label, m.amount_minor, m.kind, m.sort_order, now, project_id],
                 )?;
+                if changed == 0 {
+                    return Err(AppError::NotFound(
+                        "Milestone not found for this project.".into(),
+                    ));
+                }
             }
             None => {
                 connection.execute(
@@ -1357,5 +1362,35 @@ mod tests {
 
         let sum: i64 = project.milestones.iter().map(|m| m.amount_minor).sum();
         assert_eq!(sum, 30_000);
+    }
+
+    #[test]
+    fn updating_project_with_unresolvable_milestone_id_returns_error() {
+        let connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: None,
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        )
+        .unwrap();
+
+        let result = update_project_in_connection(
+            &connection,
+            &project.id,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: Some("does-not-exist".into()),
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        );
+
+        assert!(matches!(result, Err(AppError::NotFound(_))));
     }
 }
