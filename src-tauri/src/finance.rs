@@ -364,16 +364,32 @@ fn create_invoice_with_database(
     // If a flexible milestone was selected, its label/kind snapshot overrides
     // the legacy kickoff/completion-derived values above, and we enforce that
     // a milestone can have at most one active (non-void, non-deleted) invoice.
-    let (milestone_kind, milestone_label) = if let Some(milestone_id) = milestone_id.as_deref() {
+    //
+    // `project_id` is a required (non-Option) field on CreateInvoiceInput and is
+    // validated above via `required_trimmed` plus `load_project_invoice_context`
+    // (which errors out if the project does not exist), so there is no "invoice
+    // with no project" case to special-case here: project_id is always a real,
+    // non-empty project id by this point. The lookup below is scoped to that
+    // project id explicitly, so a milestone belonging to a different project
+    // never resolves, regardless of SQL NULL-comparison semantics.
+    let (milestone_kind, milestone_label, milestone_percent_basis_points) = if let Some(
+        milestone_id,
+    ) = milestone_id.as_deref()
+    {
         let milestone: Option<(String, String, i64)> = transaction
             .query_row(
-                "SELECT label, kind, amount_minor FROM project_milestones WHERE id = ?1 AND deleted_at IS NULL",
-                params![milestone_id],
+                "SELECT label, kind, amount_minor FROM project_milestones
+                 WHERE id = ?1 AND project_id = ?2 AND deleted_at IS NULL",
+                params![milestone_id, project_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
             .optional()?;
-        let (label, kind, _amount_minor) =
-            milestone.ok_or_else(|| AppError::NotFound("Milestone not found.".into()))?;
+        let (label, kind, _amount_minor) = milestone.ok_or_else(|| {
+            AppError::NotFound(
+                "Milestone not found for this project. It may belong to a different project."
+                    .into(),
+            )
+        })?;
 
         let active: i64 = transaction.query_row(
             "SELECT COUNT(*) FROM invoices WHERE milestone_id = ?1 AND deleted_at IS NULL AND status <> 'void'",
@@ -391,9 +407,12 @@ fn create_invoice_with_database(
             "kickoff" | "completion" => kind,
             _ => "custom".to_string(),
         };
-        (mapped_kind, Some(label))
+        // Flexible milestones are amount-based, not percentage-based: a
+        // linked milestone overrides any legacy percent input so the
+        // persisted value never contradicts the resolved milestone.
+        (mapped_kind, Some(label), None)
     } else {
-        (milestone_kind, milestone_label)
+        (milestone_kind, milestone_label, milestone_percent_basis_points)
     };
 
     let seller = load_seller_snapshot(&transaction)?;
@@ -2750,6 +2769,59 @@ mod tests {
         let recreated = create_invoice_with_database(&database, third_input).unwrap();
         assert_eq!(recreated.milestone_kind, "kickoff");
         assert_eq!(recreated.milestone_label.as_deref(), Some("Kickoff"));
+    }
+
+    #[test]
+    fn create_invoice_rejects_milestone_from_another_project() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-a", "phase", "Project A phase", 20_000);
+
+        const OTHER_PROJECT_ID: &str = "project-2";
+        {
+            let connection = database.lock().unwrap();
+            let now = utc_now();
+            connection
+                .execute(
+                    "INSERT INTO projects (
+                        id, client_id, name, currency, quoted_total_minor,
+                        kickoff_percent_basis_points, kickoff_label,
+                        completion_percent_basis_points, completion_label,
+                        created_at, updated_at
+                     ) VALUES (
+                        ?1, ?2, 'Other project', 'USD', 100000,
+                        5000, 'Kickoff', 5000, 'Completion', ?3, ?3
+                     )",
+                    params![OTHER_PROJECT_ID, TEST_CLIENT_ID, now],
+                )
+                .unwrap();
+            connection
+                .execute(
+                    "INSERT INTO project_milestones (
+                        id, project_id, label, amount_minor, kind, sort_order,
+                        created_at, updated_at, deleted_at
+                     ) VALUES ('milestone-b', ?1, 'Project B phase', 15000, 'phase', 0, ?2, ?2, NULL)",
+                    params![OTHER_PROJECT_ID, now],
+                )
+                .unwrap();
+        }
+
+        // Invoice targets TEST_PROJECT_ID ("project A") but references the
+        // milestone that belongs to OTHER_PROJECT_ID ("project B"). This must
+        // be rejected rather than silently cross-linking billing across
+        // projects (and, transitively, across currencies).
+        let mut input = invoice_input("issued", "2099-01-01", 10_000);
+        input.milestone_id = Some("milestone-b".into());
+
+        assert!(matches!(
+            create_invoice_with_database(&database, input),
+            Err(AppError::NotFound(_))
+        ));
+
+        let connection = database.lock().unwrap();
+        let invoice_count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM invoices", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(invoice_count, 0);
     }
 
     #[test]
