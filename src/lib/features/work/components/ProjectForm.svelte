@@ -37,6 +37,10 @@
     return { ...milestone, key: milestone.id ?? uid() };
   }
 
+  function isBilled(milestone: { status?: ProjectMilestone["status"] }): boolean {
+    return milestone.status === "invoiced" || milestone.status === "paid";
+  }
+
   let clientId =
     project?.clientId ?? initialClientId ?? clients[0]?.id ?? "";
   let name = project?.name ?? "";
@@ -57,6 +61,7 @@
   let template: TemplateOption = "custom";
   let weeklyWeeks = 4;
   let weeklyAmount = "";
+  let confirmingTemplate = false;
 
   $: if (!clientId && clients.length) clientId = clients[0].id;
   $: selectedClient = clients.find((client) => client.id === clientId);
@@ -66,6 +71,9 @@
       : selectedClient?.currency ?? "USD";
   $: amountMinor = Math.round((Number(quotedValue) || 0) * 100);
   $: planTotal = planTotalMinor(milestones);
+  $: hasPersistedMilestones = milestones.some((row) => Boolean(row.id));
+  $: billedMilestoneCount = milestones.filter(isBilled).length;
+  $: replaceableMilestoneCount = milestones.length - billedMilestoneCount;
   $: datesInvalid = Boolean(startDate && dueDate && dueDate < startDate);
   $: urls = urlsFromText();
   $: urlsInvalid = urls.some(invalidUrl);
@@ -106,28 +114,52 @@
     }
   }
 
-  function applyTemplate(): void {
-    let seeded: ProjectMilestone[];
+  function computeSeededMilestones(): ProjectMilestone[] {
     switch (template) {
       case "kickoff-completion":
-        seeded = kickoffCompletion(amountMinor);
-        break;
+        return kickoffCompletion(amountMinor);
       case "even-weekly": {
         const perWeekMinor = Math.max(
           0,
           Math.round((Number(weeklyAmount) || 0) * 100),
         );
-        seeded = evenWeekly(weeklyWeeks, perWeekMinor);
-        break;
+        return evenWeekly(weeklyWeeks, perWeekMinor);
       }
       case "phases":
-        seeded = phases(2);
-        break;
+        return phases(2);
       default:
-        seeded = [];
-        break;
+        return [];
     }
-    milestones = seeded.map(toRow);
+  }
+
+  function applyTemplate(): void {
+    // Applying a template wholesale-replaces the plan. If any current
+    // milestone is persisted (has an id), require an explicit confirmation
+    // first so we never silently discard ids the backend uses to match
+    // (and soft-delete) existing milestones.
+    if (hasPersistedMilestones && !confirmingTemplate) {
+      confirmingTemplate = true;
+      return;
+    }
+    confirmingTemplate = false;
+
+    const seeded = computeSeededMilestones();
+    // Invoiced/paid milestones are billed work: never remove them via a
+    // template swap. Keep them (with their ids) and append the template
+    // rows after them, then re-sequence sortOrder.
+    const keptRows = milestones.filter(isBilled);
+    milestones = [...keptRows, ...seeded.map(toRow)].map((row, i) => ({
+      ...row,
+      sortOrder: i,
+    }));
+  }
+
+  function cancelApplyTemplate(): void {
+    confirmingTemplate = false;
+  }
+
+  function onTemplateOptionChange(): void {
+    confirmingTemplate = false;
   }
 
   function setMilestoneAmount(index: number, raw: string): void {
@@ -146,6 +178,7 @@
   }
 
   function removeMilestone(index: number): void {
+    if (isBilled(milestones[index])) return;
     milestones = milestones
       .filter((_, i) => i !== index)
       .map((row, i) => ({ ...row, sortOrder: i }));
@@ -277,7 +310,7 @@
     <div class="template-row">
       <label>
         <span>Template</span>
-        <select bind:value={template}>
+        <select bind:value={template} on:change={onTemplateOptionChange}>
           <option value="custom">Custom / empty</option>
           <option value="kickoff-completion">Kickoff + Completion</option>
           <option value="even-weekly">Even weekly</option>
@@ -304,9 +337,25 @@
           </div>
         </label>
       {/if}
-      <button class="secondary" type="button" on:click={applyTemplate}>
-        Apply template
-      </button>
+      {#if confirmingTemplate}
+        <span class="template-confirm">
+          <span class="template-confirm-label">
+            {replaceableMilestoneCount > 0
+              ? `Replace ${replaceableMilestoneCount} milestone${replaceableMilestoneCount === 1 ? "" : "s"}?`
+              : "Add template? Billed milestones will be kept."}
+          </span>
+          <button class="danger-solid" type="button" on:click={applyTemplate}>
+            Replace
+          </button>
+          <button class="secondary" type="button" on:click={cancelApplyTemplate}>
+            Cancel
+          </button>
+        </span>
+      {:else}
+        <button class="secondary" type="button" on:click={applyTemplate}>
+          Apply template
+        </button>
+      {/if}
     </div>
 
     {#each milestones as milestone, index (milestone.key)}
@@ -314,7 +363,12 @@
         <span class="milestone-number">{String(index + 1).padStart(2, "0")}</span>
         <label>
           <span>Label</span>
-          <input bind:value={milestone.label} maxlength="80" placeholder="Milestone label" />
+          <input
+            bind:value={milestone.label}
+            maxlength="80"
+            placeholder="Milestone label"
+            required
+          />
         </label>
         <label class="amount-field">
           <span>Amount</span>
@@ -352,6 +406,10 @@
             type="button"
             class="danger"
             aria-label="Remove milestone"
+            disabled={isBilled(milestone)}
+            title={isBilled(milestone)
+              ? "Billed milestones can't be removed"
+              : undefined}
             on:click={() => removeMilestone(index)}
           >
             ✕
@@ -526,6 +584,24 @@
 
   .template-param {
     width: 120px;
+  }
+
+  .template-confirm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .template-confirm-label {
+    color: var(--danger, #ef766f);
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+
+  .danger-solid {
+    color: #1a0906;
+    background: var(--danger, #ef766f);
+    border: 1px solid var(--danger, #ef766f);
   }
 
   .milestone {
