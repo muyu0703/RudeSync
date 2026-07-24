@@ -310,8 +310,11 @@ pub(crate) fn create_project(
     database: State<'_, Database>,
     input: CreateProjectInput,
 ) -> Result<Project, AppError> {
-    let connection = database.lock()?;
-    create_project_in_connection(&connection, input)
+    let mut connection = database.lock()?;
+    let transaction = connection.transaction()?;
+    let project = create_project_in_connection(&transaction, input)?;
+    transaction.commit()?;
+    load_project(&connection, &project.id, false)
 }
 
 fn create_project_in_connection(
@@ -361,8 +364,11 @@ pub(crate) fn update_project(
     id: String,
     input: CreateProjectInput,
 ) -> Result<Project, AppError> {
-    let connection = database.lock()?;
-    update_project_in_connection(&connection, &id, input)
+    let mut connection = database.lock()?;
+    let transaction = connection.transaction()?;
+    let project = update_project_in_connection(&transaction, &id, input)?;
+    transaction.commit()?;
+    load_project(&connection, &project.id, false)
 }
 
 fn update_project_in_connection(
@@ -1392,5 +1398,60 @@ mod tests {
         );
 
         assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[test]
+    fn failed_milestone_sync_rolls_back_entire_project_update_in_a_transaction() {
+        let mut connection = milestones_test_connection();
+        let project = create_project_in_connection(
+            &connection,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: None,
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        )
+        .unwrap();
+        let existing_milestone_id = project.milestones[0].id.clone();
+
+        // Mirror what the real create_project/update_project commands do:
+        // wrap the project update and the milestone sync in a single
+        // transaction, and only commit once every step has succeeded.
+        let transaction = connection.transaction().unwrap();
+        let result = update_project_in_connection(
+            &transaction,
+            &project.id,
+            milestone_project_input(Some(vec![MilestoneInput {
+                id: Some("does-not-exist".into()),
+                label: "Kickoff".into(),
+                amount_minor: 30_000,
+                kind: Some("kickoff".into()),
+                sort_order: Some(0),
+            }])),
+        );
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+        // In the real command an error here means `transaction.commit()` is
+        // never reached, so the transaction rolls back on drop. Reproduce
+        // that here instead of committing.
+        drop(transaction);
+
+        let reloaded = load_project(&connection, &project.id, false).unwrap();
+        assert_eq!(reloaded.milestones.len(), 1);
+        assert_eq!(reloaded.milestones[0].id, existing_milestone_id);
+
+        let deleted_count: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM project_milestones
+                 WHERE project_id = ?1 AND deleted_at IS NOT NULL",
+                params![project.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            deleted_count, 0,
+            "the pre-existing milestone must not have been soft-deleted by the rolled-back update"
+        );
     }
 }
