@@ -73,6 +73,7 @@ export interface Invoice {
   sellerEmail: string | null;
   sellerAddress: string | null;
   sellerLogoPath: string | null;
+  milestoneId: string | null;
   milestoneLabel: string | null;
   milestoneKind: string;
   milestonePercentBasisPoints: number | null;

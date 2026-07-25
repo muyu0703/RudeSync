@@ -293,6 +293,7 @@ function parseInvoice(value: unknown): Invoice {
     sellerLogoPath: nullableText(
       field(raw, "sellerLogoPath", "seller_logo_path"),
     ),
+    milestoneId: nullableText(field(raw, "milestoneId", "milestone_id")),
     milestoneLabel: nullableText(
       field(raw, "milestoneLabel", "milestone_label"),
     ),
@@ -930,6 +931,7 @@ class BrowserMoneyService implements MoneyService {
       sellerEmail: snapshot.sellerEmail,
       sellerAddress: snapshot.sellerAddress,
       sellerLogoPath: snapshot.sellerLogoPath,
+      milestoneId: normalized.milestoneId ?? null,
       milestoneLabel: normalized.milestoneLabel ?? null,
       milestoneKind: normalized.milestoneKind ?? "custom",
       milestonePercentBasisPoints:
@@ -987,6 +989,7 @@ class BrowserMoneyService implements MoneyService {
       sellerEmail: snapshot.sellerEmail,
       sellerAddress: snapshot.sellerAddress,
       sellerLogoPath: snapshot.sellerLogoPath,
+      milestoneId: normalized.milestoneId ?? null,
       milestoneLabel: normalized.milestoneLabel ?? null,
       milestoneKind: normalized.milestoneKind ?? "custom",
       milestonePercentBasisPoints:

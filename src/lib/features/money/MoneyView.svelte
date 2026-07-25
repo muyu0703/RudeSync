@@ -56,6 +56,9 @@
   let showInvoiceForm = false;
   let showLoanForm = false;
   let editingInvoiceId: string | null = null;
+  // The milestone the draft being edited already owns. It reads as "invoiced"
+  // because of that very draft, so it must stay pickable in the form.
+  let editingMilestoneId: string | null = null;
 
   let invoiceProjectId = "";
   let invoiceMilestoneId = "";
@@ -323,10 +326,11 @@
   function editDraftInvoice(invoice: Invoice): void {
     editingInvoiceId = invoice.id;
     invoiceProjectId = invoice.projectId;
-    // Draft invoices don't round-trip a milestoneId from the backend
-    // (only milestoneKind/milestoneLabel are snapshotted), so the picker
-    // starts unselected here; existing line items are preserved as-is.
-    invoiceMilestoneId = "";
+    // Repopulate the picker from the draft's own link so saving again keeps
+    // the milestone (and its label/kind snapshot) instead of silently
+    // unlinking it. Existing line items are preserved as-is.
+    invoiceMilestoneId = invoice.milestoneId ?? "";
+    editingMilestoneId = invoice.milestoneId ?? null;
     invoiceIssueDate = invoice.issueDate;
     invoiceTerm = invoice.termKind;
     invoiceCustomDueDate = invoice.dueDate;
@@ -480,6 +484,7 @@
 
   function resetInvoiceForm(): void {
     editingInvoiceId = null;
+    editingMilestoneId = null;
     invoiceProjectId = "";
     invoiceMilestoneId = "";
     invoiceIssueDate = today;
@@ -992,7 +997,8 @@
                   {#each selectedProject.milestones as milestone}
                     <option
                       value={milestone.id}
-                      disabled={milestone.status !== "not-invoiced"}
+                      disabled={milestone.status !== "not-invoiced" &&
+                        milestone.id !== editingMilestoneId}
                     >
                       {milestone.label} — {formatMoney(milestone.amountMinor, selectedProject?.currency)} ({milestone.status})
                     </option>

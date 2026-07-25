@@ -100,6 +100,7 @@ pub(crate) struct UpdateDraftInvoiceInput {
     invoice_id: String,
     project_id: String,
     client_id: String,
+    milestone_id: Option<String>,
     milestone_kind: String,
     milestone_percent_basis_points: Option<i64>,
     milestone_label: Option<String>,
@@ -155,6 +156,7 @@ pub(crate) struct Invoice {
     seller_email: Option<String>,
     seller_address: Option<String>,
     seller_logo_path: Option<String>,
+    milestone_id: Option<String>,
     milestone_label: Option<String>,
     milestone_kind: String,
     milestone_percent_basis_points: Option<i64>,
@@ -289,7 +291,8 @@ pub(crate) fn list_invoices(
             i.payment_instructions,
             i.created_at,
             i.updated_at,
-            i.deleted_at
+            i.deleted_at,
+            i.milestone_id
          FROM invoices i
          LEFT JOIN projects p ON p.id = i.project_id
          WHERE (?1 = 1 OR i.deleted_at IS NULL)
@@ -637,34 +640,89 @@ fn update_draft_invoice_with_database(
             }
         });
 
-    // `UpdateDraftInvoiceInput` has no `milestoneId` field, so editing a draft
-    // never sets a new link — but it does let the user change `project_id`,
-    // and a milestone link that was valid for the old project is not
-    // necessarily valid for the new one. If we left `milestone_id` as-is, the
-    // draft would keep reporting the old milestone as "invoiced" in a
-    // project it no longer belongs to, permanently blocking that milestone
-    // from being re-invoiced with no way to recover short of manually
-    // voiding this invoice. Re-check the existing link against the
-    // (possibly new) project here, inside the same transaction, and drop it
-    // if it no longer belongs. This only ever clears the link; it never
-    // rejects the edit, and the milestone_label/milestone_kind snapshot
-    // columns are left untouched either way.
-    let milestone_id = match current_milestone_id {
+    // The draft's milestone link is editable: the picker in the invoice form is
+    // the source of truth, so `milestoneId` decides where the draft points. The
+    // link is re-validated on every save because a draft can also change
+    // `project_id`, and a milestone that was valid for the old project is not
+    // necessarily valid for the new one.
+    //
+    // Two distinct cases:
+    //  * the caller kept the link the draft already had — if it no longer
+    //    belongs to the (possibly new) project we silently clear it rather than
+    //    rejecting the edit, otherwise a draft whose project changed could never
+    //    be saved and its old milestone would stay blocked as "invoiced";
+    //  * the caller picked a different milestone — that is an explicit choice,
+    //    so an invalid one is an error, and it must not already be claimed by
+    //    another active invoice.
+    //
+    // The uniqueness check excludes this invoice itself so that re-saving a
+    // draft never collides with its own link.
+    let requested_milestone_id = optional_trimmed(input.milestone_id, 64, "Milestone ID")?;
+    let link_is_unchanged = requested_milestone_id == current_milestone_id;
+    let milestone_snapshot: Option<(String, String)> = match requested_milestone_id.as_deref() {
         Some(milestone_id) => {
-            let still_belongs: i64 = transaction.query_row(
-                "SELECT COUNT(*) FROM project_milestones
-                 WHERE id = ?1 AND project_id = ?2 AND deleted_at IS NULL",
-                params![milestone_id, project_id],
-                |row| row.get(0),
-            )?;
-            if still_belongs > 0 {
-                Some(milestone_id)
-            } else {
-                None
+            let milestone: Option<(String, String)> = transaction
+                .query_row(
+                    "SELECT label, kind FROM project_milestones
+                     WHERE id = ?1 AND project_id = ?2 AND deleted_at IS NULL",
+                    params![milestone_id, project_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()?;
+            match milestone {
+                Some((label, kind)) => {
+                    let active: i64 = transaction.query_row(
+                        "SELECT COUNT(*) FROM invoices
+                         WHERE milestone_id = ?1
+                           AND id <> ?2
+                           AND deleted_at IS NULL
+                           AND status <> 'void'",
+                        params![milestone_id, invoice_id],
+                        |row| row.get(0),
+                    )?;
+                    if active > 0 {
+                        return Err(AppError::InvalidInput(
+                            "This milestone already has an active invoice. Void it first to re-invoice."
+                                .into(),
+                        ));
+                    }
+                    Some((label, kind))
+                }
+                None if link_is_unchanged => None,
+                None => {
+                    return Err(AppError::NotFound(
+                        "Milestone not found for this project. It may belong to a different project."
+                            .into(),
+                    ))
+                }
             }
         }
         None => None,
     };
+    let milestone_id = milestone_snapshot
+        .as_ref()
+        .and(requested_milestone_id.clone());
+
+    // A linked milestone owns its label/kind snapshot: the caller's values are
+    // ignored so a draft edit can never blank out or contradict the milestone it
+    // points at. Non-classic kinds snapshot as `custom` (the invoices CHECK is
+    // deliberately narrow) with the real name kept in `milestone_label`.
+    let (milestone_kind, milestone_label, milestone_percent_basis_points) =
+        match milestone_snapshot {
+            Some((label, kind)) => {
+                let mapped_kind = match kind.as_str() {
+                    "kickoff" | "completion" => kind,
+                    _ => "custom".to_string(),
+                };
+                // Flexible milestones are amount-based, not percentage-based.
+                (mapped_kind, Some(label), None)
+            }
+            None => (
+                milestone_kind,
+                milestone_label,
+                milestone_percent_basis_points,
+            ),
+        };
 
     let seller = load_seller_snapshot(&transaction)?;
     let payment_instructions =
@@ -1094,7 +1152,8 @@ fn load_invoice(
                 i.payment_instructions,
                 i.created_at,
                 i.updated_at,
-                i.deleted_at
+                i.deleted_at,
+                i.milestone_id
              FROM invoices i
              LEFT JOIN projects p ON p.id = i.project_id
              WHERE i.id = ?1 AND (?2 = 1 OR i.deleted_at IS NULL)",
@@ -1121,6 +1180,7 @@ fn invoice_from_row(row: &Row<'_>) -> rusqlite::Result<Invoice> {
         seller_email: row.get(8)?,
         seller_address: row.get(9)?,
         seller_logo_path: row.get(10)?,
+        milestone_id: row.get(28)?,
         milestone_label: row.get(11)?,
         milestone_kind: row.get(12)?,
         milestone_percent_basis_points: row.get(13)?,
@@ -2528,6 +2588,7 @@ mod tests {
             invoice_id: invoice_id.into(),
             project_id: TEST_PROJECT_ID.into(),
             client_id: TEST_CLIENT_ID.into(),
+            milestone_id: None,
             milestone_kind: "completion".into(),
             milestone_percent_basis_points: None,
             milestone_label: Some("Final delivery".into()),
@@ -2905,6 +2966,8 @@ mod tests {
         // cleared, which frees milestone A up for re-invoicing.
         let mut update_input = draft_update_input(&created.id, "2099-01-05", 20_000);
         update_input.project_id = OTHER_PROJECT_ID.into();
+        // The caller keeps the link it already had; only the project moved.
+        update_input.milestone_id = Some("milestone-a".into());
         let updated = update_draft_invoice_with_database(&database, update_input).unwrap();
         assert_eq!(updated.project_id, OTHER_PROJECT_ID);
 
@@ -2917,6 +2980,133 @@ mod tests {
             )
             .unwrap();
         assert_eq!(stored_milestone_id, None);
+    }
+
+    fn stored_milestone_id(database: &Database, invoice_id: &str) -> Option<String> {
+        let connection = database.lock().unwrap();
+        connection
+            .query_row(
+                "SELECT milestone_id FROM invoices WHERE id = ?1",
+                params![invoice_id],
+                |row| row.get(0),
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn editing_a_draft_keeps_the_milestone_snapshot_it_was_created_with() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(
+            &database,
+            "milestone-1",
+            "additional",
+            "Additional feature",
+            20_000,
+        );
+
+        let mut input = invoice_input("draft", "2099-01-01", 20_000);
+        input.milestone_id = Some("milestone-1".into());
+        let created = create_invoice_with_database(&database, input).unwrap();
+        assert_eq!(created.milestone_id.as_deref(), Some("milestone-1"));
+        assert_eq!(created.milestone_kind, "custom");
+        assert_eq!(
+            created.milestone_label.as_deref(),
+            Some("Additional feature")
+        );
+
+        // A draft edit that keeps the same milestone must not be able to blank
+        // out or contradict the snapshot, even though the caller's own
+        // kind/label fields say something else: the milestone owns them.
+        let mut update_input = draft_update_input(&created.id, "2099-01-01", 20_000);
+        update_input.milestone_id = Some("milestone-1".into());
+        update_input.milestone_kind = "custom".into();
+        update_input.milestone_label = None;
+        let updated = update_draft_invoice_with_database(&database, update_input).unwrap();
+        assert_eq!(updated.milestone_id.as_deref(), Some("milestone-1"));
+        assert_eq!(updated.milestone_kind, "custom");
+        assert_eq!(
+            updated.milestone_label.as_deref(),
+            Some("Additional feature")
+        );
+        assert_eq!(updated.milestone_percent_basis_points, None);
+
+        let issued = issue_draft_invoice_with_database(&database, created.id.clone()).unwrap();
+        assert_eq!(issued.status, "issued");
+        assert_eq!(issued.milestone_kind, "custom");
+        assert_eq!(
+            issued.milestone_label.as_deref(),
+            Some("Additional feature")
+        );
+        assert_eq!(stored_milestone_id(&database, &created.id).as_deref(), Some("milestone-1"));
+    }
+
+    #[test]
+    fn editing_a_draft_can_move_the_milestone_link_without_double_billing() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-a", "kickoff", "Kickoff", 20_000);
+        insert_project_milestone(&database, "milestone-b", "phase", "Phase two", 30_000);
+
+        let mut input = invoice_input("draft", "2099-01-01", 20_000);
+        input.milestone_id = Some("milestone-a".into());
+        let created = create_invoice_with_database(&database, input).unwrap();
+        assert_eq!(created.milestone_id.as_deref(), Some("milestone-a"));
+
+        // While A is claimed by this draft, B must be free and A must not be.
+        let mut blocked = invoice_input("draft", "2099-01-02", 20_000);
+        blocked.milestone_id = Some("milestone-a".into());
+        assert!(matches!(
+            create_invoice_with_database(&database, blocked),
+            Err(AppError::InvalidInput(_))
+        ));
+
+        let mut update_input = draft_update_input(&created.id, "2099-01-01", 30_000);
+        update_input.milestone_id = Some("milestone-b".into());
+        let updated = update_draft_invoice_with_database(&database, update_input).unwrap();
+        assert_eq!(updated.milestone_id.as_deref(), Some("milestone-b"));
+        assert_eq!(updated.milestone_kind, "custom");
+        assert_eq!(updated.milestone_label.as_deref(), Some("Phase two"));
+        assert_eq!(
+            stored_milestone_id(&database, &created.id).as_deref(),
+            Some("milestone-b")
+        );
+
+        // A is billable again...
+        let mut freed = invoice_input("issued", "2099-01-03", 20_000);
+        freed.milestone_id = Some("milestone-a".into());
+        let kickoff = create_invoice_with_database(&database, freed).unwrap();
+        assert_eq!(kickoff.milestone_kind, "kickoff");
+        assert_eq!(kickoff.milestone_label.as_deref(), Some("Kickoff"));
+
+        // ...and B, now held by the draft, cannot be invoiced a second time.
+        let mut duplicate = invoice_input("issued", "2099-01-04", 30_000);
+        duplicate.milestone_id = Some("milestone-b".into());
+        assert!(matches!(
+            create_invoice_with_database(&database, duplicate),
+            Err(AppError::InvalidInput(_))
+        ));
+
+        // Re-saving the draft on the milestone it already holds is not a
+        // collision with itself.
+        let mut resave = draft_update_input(&created.id, "2099-01-01", 30_000);
+        resave.milestone_id = Some("milestone-b".into());
+        assert!(update_draft_invoice_with_database(&database, resave).is_ok());
+
+        // Pointing the draft at a milestone another live invoice owns is refused.
+        let mut collide = draft_update_input(&created.id, "2099-01-01", 20_000);
+        collide.milestone_id = Some("milestone-a".into());
+        assert!(matches!(
+            update_draft_invoice_with_database(&database, collide),
+            Err(AppError::InvalidInput(_))
+        ));
+
+        // Actively picking a milestone that does not belong to the project is
+        // an error, not a silent unlink.
+        let mut unknown = draft_update_input(&created.id, "2099-01-01", 20_000);
+        unknown.milestone_id = Some("does-not-exist".into());
+        assert!(matches!(
+            update_draft_invoice_with_database(&database, unknown),
+            Err(AppError::NotFound(_))
+        ));
     }
 
     #[test]

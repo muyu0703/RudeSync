@@ -62,3 +62,9 @@ SET milestone_id = (
 WHERE milestone_id IS NULL
   AND project_id IS NOT NULL
   AND milestone_kind IN ('kickoff', 'completion');
+
+-- Milestone status is derived by looking up a milestone's live invoices; without
+-- this index that subquery scans the whole invoices table once per milestone.
+CREATE INDEX invoices_by_milestone
+    ON invoices(milestone_id)
+    WHERE milestone_id IS NOT NULL AND deleted_at IS NULL;
