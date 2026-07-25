@@ -12,7 +12,9 @@ use tauri::{AppHandle, State};
 use tauri_plugin_autostart::ManagerExt;
 use uuid::Uuid;
 
-use super::{apply_migrations, seed_defaults, utc_now, AppError, Database};
+use super::{
+    apply_migrations, latest_schema_version, seed_defaults, utc_now, AppError, Database,
+};
 
 const DEFAULT_INVOICE_TERM: InvoiceTerm = InvoiceTerm::FourteenDays;
 const BACKUP_INTERVAL_HOURS: i64 = 24;
@@ -1141,7 +1143,7 @@ fn validate_database_connection(connection: &Connection) -> Result<(), AppError>
         [],
         |row| row.get(0),
     )?;
-    if version > 2 {
+    if version > latest_schema_version() {
         return Err(AppError::InvalidInput(
             "This backup was created by a newer RudeSync database version.".into(),
         ));
@@ -1518,6 +1520,46 @@ mod tests {
             fs::remove_file(directory.join(name)).unwrap();
         }
         fs::remove_dir(directory).unwrap();
+    }
+
+    #[test]
+    fn backup_of_a_fully_migrated_database_restores_successfully() {
+        let directory = test_directory("restore-roundtrip-test");
+        let active = directory.join("active.sqlite3");
+        let connection = open_database_connection(&active).unwrap();
+
+        let applied: i64 = connection
+            .query_row(
+                "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(applied, latest_schema_version());
+
+        let backup = directory.join(backup_file_name(Utc::now(), Uuid::new_v4()));
+        create_sqlite_backup(&connection, &backup).unwrap();
+
+        // Both halves of restore_backup: validating the chosen source file and
+        // validating the copy written over the active database.
+        open_validated_backup(&backup).unwrap().close().unwrap();
+        validate_database_file(&backup).unwrap();
+
+        // A backup from a genuinely newer build is still refused.
+        let future = directory.join("future.sqlite3");
+        create_sqlite_backup(&connection, &future).unwrap();
+        let writable = Connection::open(&future).unwrap();
+        writable
+            .execute(
+                "INSERT INTO schema_migrations(version, applied_at) VALUES (?1, ?2)",
+                params![latest_schema_version() + 1, utc_now()],
+            )
+            .unwrap();
+        writable.close().unwrap();
+        assert!(validate_database_file(&future).is_err());
+
+        drop(connection);
+        fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]

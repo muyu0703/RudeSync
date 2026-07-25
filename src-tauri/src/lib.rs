@@ -1266,6 +1266,29 @@ fn recurrence_label(rule: Option<&str>) -> &'static str {
     }
 }
 
+/// Every migration this build knows how to apply, in order.
+const MIGRATIONS: [(i64, &str); 3] = [
+    (1_i64, INITIAL_MIGRATION),
+    (2_i64, RELIABILITY_MIGRATION),
+    (3_i64, MILESTONES_MIGRATION),
+];
+
+/// Highest `schema_migrations.version` this build can produce or read.
+/// Derived from [`MIGRATIONS`] so adding a migration cannot leave a stale
+/// hardcoded ceiling behind (see backup restore validation in `settings.rs`).
+pub(crate) const fn latest_schema_version() -> i64 {
+    let mut latest = 0_i64;
+    let mut index = 0;
+    while index < MIGRATIONS.len() {
+        let (version, _) = MIGRATIONS[index];
+        if version > latest {
+            latest = version;
+        }
+        index += 1;
+    }
+    latest
+}
+
 fn apply_migrations(connection: &mut Connection) -> Result<(), AppError> {
     connection.execute_batch(
         "CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -1280,12 +1303,7 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), AppError> {
         |row| row.get(0),
     )?;
 
-    let migrations = [
-        (1_i64, INITIAL_MIGRATION),
-        (2_i64, RELIABILITY_MIGRATION),
-        (3_i64, MILESTONES_MIGRATION),
-    ];
-    for (version, sql) in migrations {
+    for (version, sql) in MIGRATIONS {
         if version <= current_version {
             continue;
         }
