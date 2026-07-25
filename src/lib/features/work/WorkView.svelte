@@ -498,7 +498,7 @@
                   </div>
                 </div>
                 <div class="project-value">
-                  <strong>{formatMoney(project.quotedTotalMinor, project.currency)}</strong>
+                  <strong>{formatMoney(project.milestones.length > 0 ? planTotalMinor(project.milestones) : project.quotedTotalMinor, project.currency)}</strong>
                   <span>{project.status}</span>
                 </div>
               </div>
