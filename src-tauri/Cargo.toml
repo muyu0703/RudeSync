@@ -1,6 +1,6 @@
 [package]
 name = "rude-sync"
-version = "0.1.1"
+version = "0.1.2"
 description = "A lightweight, offline-first personal work and finance tracker."
 authors = ["RudeSync"]
 edition = "2021"
