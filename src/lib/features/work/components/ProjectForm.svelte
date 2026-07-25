@@ -20,7 +20,11 @@
   export let onSave: (input: CreateProjectInput) => void | Promise<void>;
   export let onCancel: () => void;
 
-  type MilestoneRow = ProjectMilestone & { key: string };
+  // `amountText` is the raw text the user is typing. Keeping it separate from
+  // `amountMinor` means the field is never rewritten mid-edit (a controlled
+  // `(amountMinor / 100).toFixed(2)` value turns "5" into "5.00" and pushes
+  // the caret past the decimals). Minor units are re-derived on commit.
+  type MilestoneRow = ProjectMilestone & { key: string; amountText: string };
   type TemplateOption =
     | "custom"
     | "kickoff-completion"
@@ -33,8 +37,20 @@
       : `ms-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
+  function amountMinorFromText(raw: string): number {
+    return Math.max(0, Math.round((Number(raw) || 0) * 100));
+  }
+
+  function amountTextFromMinor(amountMinor: number): string {
+    return (amountMinor / 100).toFixed(2);
+  }
+
   function toRow(milestone: ProjectMilestone): MilestoneRow {
-    return { ...milestone, key: milestone.id ?? uid() };
+    return {
+      ...milestone,
+      key: milestone.id ?? uid(),
+      amountText: amountTextFromMinor(milestone.amountMinor),
+    };
   }
 
   function isBilled(milestone: { status?: ProjectMilestone["status"] }): boolean {
@@ -77,10 +93,12 @@
   $: datesInvalid = Boolean(startDate && dueDate && dueDate < startDate);
   $: urls = urlsFromText();
   $: urlsInvalid = urls.some(invalidUrl);
+  // The project total is the sum of its milestones; `quotedValue` is only a
+  // legacy reference figure that seeds the Kickoff + Completion template, so
+  // it must not block submitting the form.
   $: formInvalid =
     !clientId ||
     !name.trim() ||
-    !quotedValue ||
     amountMinor < 0 ||
     datesInvalid ||
     urlsInvalid;
@@ -162,11 +180,15 @@
     confirmingTemplate = false;
   }
 
-  function setMilestoneAmount(index: number, raw: string): void {
-    const amountMinor = Math.max(0, Math.round((Number(raw) || 0) * 100));
-    milestones = milestones.map((row, i) =>
-      i === index ? { ...row, amountMinor } : row,
-    );
+  // Called on change/blur, never on every keystroke: the typed text is
+  // converted to integer minor units and the field is normalized once the
+  // user has finished with it.
+  function commitMilestoneAmount(index: number): void {
+    milestones = milestones.map((row, i) => {
+      if (i !== index) return row;
+      const amountMinor = amountMinorFromText(row.amountText);
+      return { ...row, amountMinor, amountText: amountTextFromMinor(amountMinor) };
+    });
   }
 
   function moveMilestone(index: number, direction: -1 | 1): void {
@@ -191,6 +213,7 @@
         key: uid(),
         label: "",
         amountMinor: 0,
+        amountText: amountTextFromMinor(0),
         kind: "custom",
         sortOrder: milestones.length,
       },
@@ -199,8 +222,13 @@
 
   function submit(): void {
     if (formInvalid || busy) return;
+    // Re-derive from the typed text rather than trusting the last committed
+    // value, so submitting straight from a focused field can't drop an edit.
     const submittedMilestones: ProjectMilestone[] = milestones.map(
-      ({ key, status: _rowStatus, ...rest }) => rest,
+      ({ key, status: _rowStatus, amountText, ...rest }) => ({
+        ...rest,
+        amountMinor: amountMinorFromText(amountText),
+      }),
     );
     void onSave({
       clientId,
@@ -247,7 +275,7 @@
 
   <div class="field-grid value-row">
     <label>
-      <span>Fixed project value <b aria-hidden="true">*</b></span>
+      <span>Original quote</span>
       <div class="money-input">
         <i>{currency}</i>
         <input
@@ -258,9 +286,13 @@
           max="999999999999.99"
           step="0.01"
           placeholder="0.00"
-          required
+          aria-describedby="project-quote-help"
         />
       </div>
+      <small id="project-quote-help">
+        Optional reference · seeds the Kickoff + Completion template. The
+        project total is the sum of its milestones.
+      </small>
     </label>
     <label>
       <span>Start date</span>
@@ -379,9 +411,9 @@
               inputmode="decimal"
               min="0"
               step="0.01"
-              value={(milestone.amountMinor / 100).toFixed(2)}
-              on:input={(event) =>
-                setMilestoneAmount(index, event.currentTarget.value)}
+              bind:value={milestone.amountText}
+              on:change={() => commitMilestoneAmount(index)}
+              on:blur={() => commitMilestoneAmount(index)}
             />
           </div>
         </label>
