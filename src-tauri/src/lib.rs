@@ -1687,6 +1687,7 @@ pub fn run() {
             finance::update_draft_invoice,
             finance::issue_draft_invoice,
             finance::void_invoice,
+            finance::delete_draft_invoice,
             finance::record_invoice_payment,
             finance::list_personal_loans,
             finance::create_personal_loan,

@@ -542,6 +542,36 @@
     }
   }
 
+  // A draft can never be voided, and it holds its milestone while it exists,
+  // so discarding is the only way to release a milestone from an abandoned
+  // draft. Projects are reloaded so the milestone picker sees it freed.
+  async function discardDraft(invoice: Invoice): Promise<void> {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Discard draft ${invoice.number}? It is not kept in the invoice history, and its milestone becomes billable again.`,
+      )
+    ) {
+      return;
+    }
+    saving = true;
+    errorMessage = "";
+    try {
+      await service.deleteDraftInvoice(invoice.id);
+      invoices = invoices.filter((item) => item.id !== invoice.id);
+      if (editingInvoiceId === invoice.id) {
+        showInvoiceForm = false;
+        resetInvoiceForm();
+      }
+      projects = await service.listInvoiceProjects();
+      successMessage = `Draft ${invoice.number} was discarded.`;
+    } catch (error) {
+      errorMessage = errorText(error, "Draft could not be discarded.");
+    } finally {
+      saving = false;
+    }
+  }
+
   function startPayment(invoice: Invoice): void {
     const totals = invoiceTotals(invoice);
     paymentInvoiceId = invoice.id;
@@ -1172,6 +1202,7 @@
                   {#if status === "draft"}
                     <button class="text-button" type="button" on:click={() => editDraftInvoice(invoice)}>Edit draft</button>
                     <button class="text-button" type="button" disabled={saving} on:click={() => issueDraft(invoice)}>Issue</button>
+                    <button class="text-button danger" type="button" disabled={saving} on:click={() => discardDraft(invoice)}>Discard draft</button>
                   {/if}
                   {#if !["draft", "void", "paid"].includes(status)}
                     <button class="text-button" type="button" on:click={() => startPayment(invoice)}>Record payment</button>

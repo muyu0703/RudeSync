@@ -1076,6 +1076,21 @@ class BrowserMoneyService implements MoneyService {
     return updated;
   }
 
+  async deleteDraftInvoice(invoiceId: string): Promise<void> {
+    const state = this.read();
+    const index = state.invoices.findIndex(
+      (invoice) => invoice.id === invoiceId,
+    );
+    if (index < 0) throw new Error("Invoice not found.");
+    if (state.invoices[index].status !== "draft") {
+      throw new Error(
+        "Only draft invoices can be discarded. Void an issued invoice instead.",
+      );
+    }
+    state.invoices.splice(index, 1);
+    this.write(state);
+  }
+
   async recordInvoicePayment(
     invoiceId: string,
     input: RecordInvoicePaymentInput,
@@ -1294,6 +1309,13 @@ class TauriMoneyService implements MoneyService {
       moneyCommandArgs.voidInvoice(invoiceId),
     );
     return parseInvoice(row);
+  }
+
+  async deleteDraftInvoice(invoiceId: string): Promise<void> {
+    await this.invoke<null>(
+      MONEY_COMMANDS.deleteDraftInvoice,
+      moneyCommandArgs.deleteDraftInvoice(invoiceId),
+    );
   }
 
   async recordInvoicePayment(

@@ -178,6 +178,8 @@ export interface MoneyService {
   updateDraftInvoice(input: UpdateDraftInvoiceInput): Promise<Invoice>;
   issueDraftInvoice(invoiceId: string): Promise<Invoice>;
   voidInvoice(invoiceId: string): Promise<Invoice>;
+  /** Discard a draft outright, releasing the milestone it holds. */
+  deleteDraftInvoice(invoiceId: string): Promise<void>;
   recordInvoicePayment(
     invoiceId: string,
     input: RecordInvoicePaymentInput,

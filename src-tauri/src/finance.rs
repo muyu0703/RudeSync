@@ -1025,6 +1025,67 @@ fn void_invoice_with_database(
 }
 
 #[tauri::command]
+pub(crate) fn delete_draft_invoice(
+    database: State<'_, Database>,
+    invoice_id: String,
+) -> Result<(), AppError> {
+    delete_draft_invoice_with_database(database.inner(), invoice_id)
+}
+
+/// Discard a draft outright. A draft holds its milestone (the milestone reads
+/// as "invoiced" and `create_invoice` refuses a replacement), and a draft can
+/// never be voided, so without this an abandoned draft would block its
+/// milestone forever. Soft-deleting the draft releases the milestone: the
+/// status subquery only counts invoices with `deleted_at IS NULL`.
+fn delete_draft_invoice_with_database(
+    database: &Database,
+    invoice_id: String,
+) -> Result<(), AppError> {
+    let invoice_id = required_trimmed(invoice_id, "Invoice ID", 64)?;
+    let mut connection = database.lock()?;
+    ensure_finance_schema_compatibility(&connection)?;
+    let transaction = connection.transaction()?;
+    let current_status: Option<String> = transaction
+        .query_row(
+            "SELECT status
+             FROM invoices
+             WHERE id = ?1 AND deleted_at IS NULL",
+            params![invoice_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let current_status =
+        current_status.ok_or_else(|| AppError::NotFound("Invoice not found.".into()))?;
+    if current_status != "draft" {
+        return Err(AppError::InvalidInput(
+            "Only draft invoices can be discarded. Void an issued invoice instead.".into(),
+        ));
+    }
+
+    let now = utc_now();
+    transaction.execute(
+        "UPDATE invoices
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE id = ?1 AND status = 'draft' AND deleted_at IS NULL",
+        params![invoice_id, now],
+    )?;
+    transaction.execute(
+        "UPDATE invoice_items
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE invoice_id = ?1 AND deleted_at IS NULL",
+        params![invoice_id, now],
+    )?;
+    transaction.execute(
+        "UPDATE invoice_adjustments
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE invoice_id = ?1 AND deleted_at IS NULL",
+        params![invoice_id, now],
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
+#[tauri::command]
 pub(crate) fn record_invoice_payment(
     database: State<'_, Database>,
     input: RecordInvoicePaymentInput,
@@ -3107,6 +3168,89 @@ mod tests {
             update_draft_invoice_with_database(&database, unknown),
             Err(AppError::NotFound(_))
         ));
+    }
+
+    #[test]
+    fn discarding_a_draft_frees_its_milestone_and_only_drafts_can_be_discarded() {
+        let database = finance_test_database("Milestone seller");
+        insert_project_milestone(&database, "milestone-1", "phase", "Phase one", 20_000);
+
+        let mut input = invoice_input("draft", "2099-01-01", 20_000);
+        input.milestone_id = Some("milestone-1".into());
+        let draft = create_invoice_with_database(&database, input).unwrap();
+
+        // While the draft lives, the milestone reads as "invoiced" and is
+        // not billable.
+        assert_eq!(milestone_status(&database, "milestone-1"), "invoiced");
+        let mut blocked = invoice_input("issued", "2099-01-02", 20_000);
+        blocked.milestone_id = Some("milestone-1".into());
+        assert!(matches!(
+            create_invoice_with_database(&database, blocked),
+            Err(AppError::InvalidInput(_))
+        ));
+
+        delete_draft_invoice_with_database(&database, draft.id.clone()).unwrap();
+        assert_eq!(milestone_status(&database, "milestone-1"), "not-invoiced");
+
+        let mut retry = invoice_input("issued", "2099-01-03", 20_000);
+        retry.milestone_id = Some("milestone-1".into());
+        let issued = create_invoice_with_database(&database, retry).unwrap();
+        assert_eq!(issued.milestone_label.as_deref(), Some("Phase one"));
+
+        // The discarded draft is gone from the default listing, and its line
+        // items went with it.
+        {
+            let connection = database.lock().unwrap();
+            let live_items: i64 = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM invoice_items
+                     WHERE invoice_id = ?1 AND deleted_at IS NULL",
+                    params![draft.id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(live_items, 0);
+            assert!(matches!(
+                load_invoice(&connection, &draft.id, false),
+                Err(AppError::NotFound(_))
+            ));
+        }
+
+        // An issued invoice must be voided, never discarded.
+        assert!(matches!(
+            delete_draft_invoice_with_database(&database, issued.id.clone()),
+            Err(AppError::InvalidInput(_))
+        ));
+        void_invoice_with_database(&database, issued.id.clone(), true).unwrap();
+        assert!(matches!(
+            delete_draft_invoice_with_database(&database, issued.id),
+            Err(AppError::InvalidInput(_))
+        ));
+        assert!(matches!(
+            delete_draft_invoice_with_database(&database, "does-not-exist".into()),
+            Err(AppError::NotFound(_))
+        ));
+    }
+
+    /// Mirrors the milestone-status derivation in `domain::load_project_milestones`.
+    fn milestone_status(database: &Database, milestone_id: &str) -> String {
+        let connection = database.lock().unwrap();
+        let status: Option<String> = connection
+            .query_row(
+                "SELECT status FROM invoices
+                 WHERE milestone_id = ?1 AND deleted_at IS NULL AND status <> 'void'
+                 ORDER BY created_at DESC LIMIT 1",
+                params![milestone_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .unwrap();
+        match status.as_deref() {
+            None => "not-invoiced",
+            Some("paid") => "paid",
+            Some(_) => "invoiced",
+        }
+        .to_string()
     }
 
     #[test]
