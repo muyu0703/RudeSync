@@ -284,6 +284,16 @@
     ).length;
   }
 
+  // A project is worth the sum of its milestones. `quotedTotalMinor` is only a
+  // legacy reference figure, used as a fallback for a project that has no
+  // milestone plan yet. Single definition so the project card and the
+  // workspace headline can never disagree.
+  function projectTotalMinor(project: Project): number {
+    return project.milestones.length > 0
+      ? planTotalMinor(project.milestones)
+      : project.quotedTotalMinor;
+  }
+
   function groupTotalsByCurrency(
     values: Project[],
   ): Array<{ currency: string; totalMinor: number }> {
@@ -291,7 +301,7 @@
     for (const project of values) {
       totals.set(
         project.currency,
-        (totals.get(project.currency) ?? 0) + project.quotedTotalMinor,
+        (totals.get(project.currency) ?? 0) + projectTotalMinor(project),
       );
     }
     return [...totals.entries()]
@@ -498,7 +508,7 @@
                   </div>
                 </div>
                 <div class="project-value">
-                  <strong>{formatMoney(project.milestones.length > 0 ? planTotalMinor(project.milestones) : project.quotedTotalMinor, project.currency)}</strong>
+                  <strong>{formatMoney(projectTotalMinor(project), project.currency)}</strong>
                   <span>{project.status}</span>
                 </div>
               </div>
