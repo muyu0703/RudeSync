@@ -22,7 +22,11 @@
         "center": true,
         "visible": true,
         "resizable": true,
-        "decorations": true
+        "decorations": true,
+        "windowEffects": {
+          "effects": ["mica", "underWindowBackground"],
+          "state": "active"
+        }
       },
       {
         "label": "task-widget",
