@@ -530,6 +530,10 @@ kbd {
 
 .task-list { padding: var(--space-1) var(--space-2); }
 .task-list.roomy { padding: var(--space-2) var(--space-3) var(--space-3); }
+/* Hairline between rows. Owned here because Svelte's per-component scoping
+   cannot match siblings across TaskRow instances. */
+.task-list .task-row + .task-row { box-shadow: inset 0 1px 0 var(--separator); }
+.task-list .task-row:hover { box-shadow: none; }
 .task-group-heading {
   display: flex;
   align-items: center;

@@ -94,10 +94,9 @@
     border-radius: var(--radius-control);
     transition: background var(--duration) var(--ease);
   }
-  .task-row + .task-row { box-shadow: inset 0 1px 0 var(--separator); }
+  /* Row separators live in app.css: Svelte scoping cannot match siblings
+     across component instances. */
   .task-row:hover { background: var(--surface-hover); }
-  .task-row:hover + .task-row,
-  .task-row:hover { box-shadow: none; }
   .task-row.completed { opacity: 0.5; }
 
   .task-check {
