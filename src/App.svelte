@@ -64,6 +64,16 @@
     | "categories"
     | "completed";
 
+  const taskFilterLabels: Record<TaskFilter, string> = {
+    all: "Open",
+    inbox: "Inbox",
+    today: "Today",
+    upcoming: "Upcoming",
+    recurring: "Recurring",
+    categories: "Categories",
+    completed: "Completed",
+  };
+
   const taskService = createTaskService();
   const workService = createWorkService();
   const moneyService = createMoneyService();
@@ -198,6 +208,7 @@
     .filter((task) =>
       task.title.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()),
     );
+  $: taskFilterSubtext = `${filteredTasks.length} shown · ${taskFilterLabels[taskFilter]}`;
 
   const sectionCopy: Record<AppSection, { eyebrow: string; title: string }> = {
     today: { eyebrow: "Daily command center", title: "Today" },
@@ -837,37 +848,35 @@
           </Card>
         </div>
       {:else if active === "tasks"}
-        <section class="section-toolbar">
-          <div class="segmented" aria-label="Task filters">
-            {#each [["all", "Open"], ["inbox", "Inbox"], ["today", "Today"], ["upcoming", "Upcoming"], ["recurring", "Recurring"], ["categories", "Categories"], ["completed", "Completed"]] as filter}
+        <Card padded={false}>
+          <SectionHeader slot="header" title="All tasks" subtext={taskFilterSubtext}>
+            <svelte:fragment slot="actions">
+              <div class="segmented" aria-label="Task filters">
+                {#each [["all", "Open"], ["inbox", "Inbox"], ["today", "Today"], ["upcoming", "Upcoming"], ["recurring", "Recurring"], ["categories", "Categories"], ["completed", "Completed"]] as filter}
+                  <button
+                    class:active={taskFilter === filter[0]}
+                    type="button"
+                    aria-pressed={taskFilter === filter[0]}
+                    on:click={() => (taskFilter = filter[0] as TaskFilter)}
+                  >{filter[1]}</button>
+                {/each}
+              </div>
+              <label class="inline-search">
+                <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
+              </label>
               <button
-                class:active={taskFilter === filter[0]}
+                class="primary-button"
                 type="button"
-                aria-pressed={taskFilter === filter[0]}
-                on:click={() => (taskFilter = filter[0] as TaskFilter)}
-              >{filter[1]}</button>
-            {/each}
-          </div>
-          <label class="inline-search">
-            <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
-          </label>
-          <button
-            class="primary-button"
-            type="button"
-            on:click={() => openTaskEditor()}
-          ><Icon name="plus" size={15} /> New task</button>
-          <button
-            class="primary-button"
-            type="button"
-            on:click={() => void openTaskWidget()}
-          ><Icon name="spark" size={15} /> Pop out widget</button>
-        </section>
-
-        <section class="panel full-panel">
-          <div class="panel-header">
-            <div><span class="panel-kicker">{taskFilter}</span><h3>{filteredTasks.length} tasks</h3></div>
-            <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
-          </div>
+                on:click={() => openTaskEditor()}
+              ><Icon name="plus" size={15} /> New task</button>
+              <button
+                class="primary-button"
+                type="button"
+                on:click={() => void openTaskWidget()}
+              ><Icon name="spark" size={15} /> Pop out widget</button>
+              <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
+            </svelte:fragment>
+          </SectionHeader>
           {#if loading}
             <div class="skeleton-list"><span></span><span></span><span></span></div>
           {:else if filteredTasks.length}
@@ -882,7 +891,7 @@
               <strong>No matching tasks</strong><p>Change the filter or capture a new task with Ctrl N.</p>
             </div>
           {/if}
-        </section>
+        </Card>
       {:else if active === "work"}
         <WorkView
           workPrefill={pendingWorkPrefill}
