@@ -27,11 +27,12 @@
   --weight-bold: 700;
 
   /* --- Surfaces --------------------------------------------- */
-  /* Neutral dark with the faintest green cast, so the accent carries the colour. */
-  --surface-window: #191d1c;
-  --surface-content: #1e2322;
-  --surface-raised: #262c2b;
-  --surface-overlay: #2d3433;
+  /* Deep forest: the ground reads green, but stays dark enough that the
+     emerald accent still functions as a signal rather than blending in. */
+  --surface-window: #070d0a;
+  --surface-content: #0d1712;
+  --surface-raised: #142019;
+  --surface-overlay: #1a2820;
   --surface-hover: rgb(255 255 255 / 0.045);
   --surface-active: rgb(255 255 255 / 0.075);
 
@@ -122,11 +123,10 @@ body {
   line-height: 1.45;
 }
 
-/* Window translucency (Mica) is disabled: WebView2 renders over the DWM
-   backdrop, and making the window transparent to expose it caused visual
-   artifacts on this setup. The shell stays solid; depth comes from the
-   surface layering and elevation below rather than from OS blur. */
-body.has-window-effect .sidebar { background: rgb(0 0 0 / 0.18); }
+/* Window translucency was removed: WebView2 renders over the DWM backdrop and
+   making the window transparent produced artifacts. Depth comes from the
+   surface ramp and elevation instead. */
+body.has-window-effect .sidebar { background: rgb(0 0 0 / 0.22); }
 
 h1, h2, h3, h4 { margin: 0; font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 h1 { font-size: var(--text-20); }
