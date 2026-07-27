@@ -1,7 +1,12 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
+  import Card from "./lib/components/Card.svelte";
   import Icon from "./lib/components/Icon.svelte";
+  import MeterBar from "./lib/components/MeterBar.svelte";
+  import SectionHeader from "./lib/components/SectionHeader.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
+  import StatCard from "./lib/components/StatCard.svelte";
+  import StatRow from "./lib/components/StatRow.svelte";
   import TaskRow from "./lib/components/TaskRow.svelte";
   import MoneyView from "./lib/features/money/MoneyView.svelte";
   import { handleInvoiceExport as exportInvoice } from "./lib/features/money/invoiceExport";
@@ -41,6 +46,14 @@
   } from "./lib/services/taskSync.ts";
   import type { AppSection, Task } from "./lib/types";
   import type { InvoiceExportDetail } from "./lib/features/money/types";
+  import {
+    openTaskCount,
+    completedTodayCount,
+    overdueTaskCount,
+    overdueInvoiceCount,
+    outstandingByCurrency,
+    receivedInMonth,
+  } from "./lib/features/dashboard/stats.ts";
 
   type TaskFilter =
     | "all"
@@ -156,6 +169,11 @@
       )
       .map((installment) => ({ loan, installment })),
   );
+  $: statOpen = openTaskCount(tasks);
+  $: statDoneToday = completedTodayCount(tasks, todayIso);
+  $: statOverdue = overdueTaskCount(tasks, todayIso) + overdueInvoiceCount(reviewInvoices, todayIso);
+  $: statOutstanding = outstandingByCurrency(reviewInvoices);
+  $: statReceived = receivedInMonth(reviewInvoices, todayIso);
   $: filteredTasks = tasks
     .filter((task) => {
       if (taskFilter === "today") return todayTasks.some((item) => item.id === task.id);
@@ -190,15 +208,6 @@
     settings: { eyebrow: "Your workspace", title: "Settings" },
   };
 
-  function longDate(date = new Date()): string {
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }).format(date);
-  }
-
   function displayDate(value: string): string {
     const date = new Date(`${value.slice(0, 10)}T12:00:00`);
     if (Number.isNaN(date.getTime())) return value;
@@ -215,13 +224,6 @@
       day: "numeric",
       year: "numeric",
     }).format(date);
-  }
-
-  function greeting(): string {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
   }
 
   function localDayFromTimestamp(value: string): string {
@@ -286,6 +288,22 @@
     } catch {
       return `${currency} ${(minor / 100).toFixed(2)}`;
     }
+  }
+
+  function formatStatMoney(entry: { currency: string; amountMinor: number }): string {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: entry.currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(entry.amountMinor / 100);
+  }
+
+  function extraCurrencies(entries: Array<{ currency: string; amountMinor: number }>): string {
+    return entries
+      .slice(1)
+      .map((entry) => formatStatMoney(entry))
+      .join(" · ");
   }
 
   async function loadTasks(): Promise<void> {
@@ -666,23 +684,36 @@
 
     <div class="content-scroll">
       {#if active === "today"}
-        <section class="today-intro">
-          <div>
-            <span class="date-line">{longDate()}</span>
-            <h2>{greeting()}. Let’s make today count.</h2>
-            <p>
-              {overdueTasks.length
-                ? `${overdueTasks.length} overdue and ${todayTasks.length} planned for today.`
-                : todayTasks.length
-                  ? `${todayTasks.length} ${todayTasks.length === 1 ? "task needs" : "tasks need"} your attention today.`
-                : "Your slate is clear. Capture the next useful thing."}
-            </p>
-          </div>
-          <div class="streak-chip">
-            <Icon name="spark" size={16} />
-            <div><strong>{completedTasks.length}</strong><span>finished</span></div>
-          </div>
-        </section>
+        <StatRow>
+          <StatCard
+            icon="check"
+            label="Open tasks"
+            value={String(statOpen)}
+            detail={`${statDoneToday} done today`}
+            tone="neutral"
+          />
+          <StatCard
+            icon="clock"
+            label="Overdue"
+            value={String(statOverdue)}
+            detail={statOverdue === 0 ? "Nothing late" : "Tasks and invoices"}
+            tone={statOverdue > 0 ? "danger" : "neutral"}
+          />
+          <StatCard
+            icon="invoice"
+            label="Outstanding"
+            value={statOutstanding.length ? formatStatMoney(statOutstanding[0]) : "None"}
+            detail={statOutstanding.length > 1 ? extraCurrencies(statOutstanding) : "Invoiced, not yet paid"}
+            tone={statOutstanding.length ? "warning" : "neutral"}
+          />
+          <StatCard
+            icon="arrow-up-right"
+            label="Received"
+            value={statReceived.length ? formatStatMoney(statReceived[0]) : "None"}
+            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "This month"}
+            tone={statReceived.length ? "positive" : "neutral"}
+          />
+        </StatRow>
 
         <form class="quick-add" on:submit|preventDefault={createQuickTask}>
           <span class="quick-plus"><Icon name="plus" size={17} /></span>
@@ -701,13 +732,14 @@
         </form>
 
         <div class="today-grid">
-          <section class="panel task-panel">
-            <div class="panel-header">
-              <div><span class="panel-kicker">Focus queue</span><h3>Today’s tasks</h3></div>
-              <button class="text-button" type="button" on:click={() => (active = "tasks")}>
-                View all <Icon name="chevron-right" size={14} />
-              </button>
-            </div>
+          <Card padded={false}>
+            <SectionHeader slot="header" title="Today’s tasks" subtext="Due or planned for today">
+              <svelte:fragment slot="actions">
+                <button class="text-button" type="button" on:click={() => (active = "tasks")}>
+                  View all <Icon name="chevron-right" size={14} />
+                </button>
+              </svelte:fragment>
+            </SectionHeader>
             {#if loading}
               <div class="skeleton-list" aria-label="Loading tasks"><span></span><span></span><span></span></div>
             {:else if overdueTasks.length || todayTasks.length}
@@ -735,26 +767,26 @@
                 <div><strong>Nothing urgent</strong><p>Add a task above or plan something in Upcoming.</p></div>
               </div>
             {/if}
-          </section>
+          </Card>
 
           <aside class="side-stack">
-            <section class="panel metric-panel">
-              <div class="metric-heading">
-                <span class="metric-icon green"><Icon name="tasks" size={17} /></span>
-                <span>Today’s progress</span>
-              </div>
-              <div class="metric-value"><strong>{completedToday.length}</strong><span>completed today</span></div>
-              <div class="progress-track">
-                <i style={`width: ${todayProgressTotal ? Math.round((completedToday.length / todayProgressTotal) * 100) : 0}%`}></i>
-              </div>
-              <p>{todayTasks.length} still open today</p>
-            </section>
+            <Card>
+              <SectionHeader slot="header" title="Today’s progress" />
+              <MeterBar
+                label="Tasks completed"
+                value={completedToday.length}
+                max={todayProgressTotal}
+                detail={`${todayTasks.length} still open today`}
+                tone="positive"
+              />
+            </Card>
 
-            <section class="panel attention-panel">
-              <div class="panel-header small">
-                <div><span class="panel-kicker">Coming up</span><h3>Payments</h3></div>
-                <span class="soft-badge">{actionableInvoiceDues.length + actionableLoanDues.length} actionable</span>
-              </div>
+            <Card padded={false}>
+              <SectionHeader slot="header" title="Payments" subtext="Coming up">
+                <svelte:fragment slot="actions">
+                  <span class="soft-badge">{actionableInvoiceDues.length + actionableLoanDues.length} actionable</span>
+                </svelte:fragment>
+              </SectionHeader>
               {#each actionableLoanDues.slice(0, 3) as item (item.installment.id)}
                 <div class:overdue={item.installment.dueDate < todayIso} class="attention-item">
                   <span class="attention-icon amber"><Icon name="loan" size={16} /></span>
@@ -776,26 +808,34 @@
               {#if !actionableLoanDues.length && !actionableInvoiceDues.length}
                 <div class="empty-inline">No invoice or personal-loan payments need attention.</div>
               {/if}
-            </section>
+            </Card>
+
+            <Card>
+              <SectionHeader slot="header" title="Earnings trend" />
+              <div class="chart-slot" aria-hidden="true"></div>
+            </Card>
           </aside>
         </div>
 
-        <section class="panel upcoming-panel">
-          <div class="panel-header">
-            <div><span class="panel-kicker">Next seven days</span><h3>Upcoming</h3></div>
-            <span class="count-label">{nextSevenTasks.length} scheduled</span>
-          </div>
-          {#if nextSevenTasks.length}
-            <div class="upcoming-strip">
-              {#each nextSevenTasks.slice(0, 4) as task (task.id)}
-                <article>
-                  <span class="upcoming-date">{displayDate(task.plannedDate ?? task.dueDate ?? "")}</span>
-                  <strong>{task.title}</strong><span>{task.category ?? "Uncategorized"}</span>
-                </article>
-              {/each}
-            </div>
-          {:else}<div class="empty-inline">No tasks are scheduled yet.</div>{/if}
-        </section>
+        <div class="upcoming-panel">
+          <Card padded={false}>
+            <SectionHeader slot="header" title="Upcoming" subtext="Next seven days">
+              <svelte:fragment slot="actions">
+                <span class="count-label">{nextSevenTasks.length} scheduled</span>
+              </svelte:fragment>
+            </SectionHeader>
+            {#if nextSevenTasks.length}
+              <div class="upcoming-strip">
+                {#each nextSevenTasks.slice(0, 4) as task (task.id)}
+                  <article>
+                    <span class="upcoming-date">{displayDate(task.plannedDate ?? task.dueDate ?? "")}</span>
+                    <strong>{task.title}</strong><span>{task.category ?? "Uncategorized"}</span>
+                  </article>
+                {/each}
+              </div>
+            {:else}<div class="empty-inline">No tasks are scheduled yet.</div>{/if}
+          </Card>
+        </div>
       {:else if active === "tasks"}
         <section class="section-toolbar">
           <div class="segmented" aria-label="Task filters">

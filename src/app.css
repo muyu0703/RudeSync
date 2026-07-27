@@ -150,7 +150,6 @@ button:disabled { cursor: default; opacity: 0.4; }
 .inline-search input:focus-visible { outline: none; }
 
 /* Numerals line up in columns. */
-.metric-value strong,
 .summary-card strong,
 .review-score strong,
 .nav-count,
@@ -406,40 +405,24 @@ kbd {
    Today
    ============================================================= */
 
-.today-intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-6);
-  max-width: 1120px;
-  margin: 0 auto var(--space-5);
-}
-.date-line { color: var(--text-secondary); font-size: var(--text-13); }
-.today-intro h2, .review-hero h2 {
+.review-hero h2 {
   margin: var(--space-1) 0 var(--space-1);
   font-size: var(--text-28);
   font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
 }
-.today-intro p, .review-hero p, .feature-panel p {
+.review-hero p, .feature-panel p {
   color: var(--text-secondary);
   font-size: var(--text-13);
   line-height: 1.5;
 }
 
-.streak-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  color: var(--accent);
-  background: var(--surface-content);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-raised);
+/* Reserved for Cycle 2. Renders as a quiet empty region, never a broken chart. */
+.chart-slot {
+  height: 96px;
+  border: 1px dashed var(--separator-strong);
+  border-radius: var(--radius-control);
 }
-.streak-chip div { display: flex; flex-direction: column; }
-.streak-chip strong { color: var(--text-primary); font-size: var(--text-17); line-height: 1.2; }
-.streak-chip span { color: var(--text-tertiary); font-size: var(--text-11); text-transform: none; }
 
 .quick-add {
   display: grid;
@@ -556,36 +539,15 @@ kbd {
 .task-group-heading b { font-size: var(--text-11); font-weight: var(--weight-medium); }
 
 .side-stack { display: grid; gap: var(--space-4); }
-.metric-panel { padding: var(--space-4); }
-.metric-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-secondary);
-  font-size: var(--text-12);
-  font-weight: var(--weight-medium);
-}
-.metric-icon, .attention-icon {
+.attention-icon {
   display: grid;
   width: 24px;
   height: 24px;
   place-items: center;
   border-radius: var(--radius-control);
 }
-.metric-icon.green, .attention-icon.green { color: var(--accent); }
+.attention-icon.green { color: var(--accent); }
 .attention-icon.amber { color: var(--amber); }
-.metric-value { display: flex; align-items: baseline; gap: var(--space-2); margin-top: var(--space-3); }
-.metric-value strong { font-size: var(--text-28); font-weight: var(--weight-semibold); letter-spacing: -0.02em; }
-.metric-value span, .metric-panel p { color: var(--text-secondary); font-size: var(--text-12); }
-.progress-track {
-  height: 4px;
-  margin-top: var(--space-3);
-  overflow: hidden;
-  background: var(--surface-active);
-  border-radius: var(--radius-pill);
-}
-.progress-track i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width var(--duration) var(--ease); }
-.metric-panel p { margin-top: var(--space-2); }
 
 .soft-badge, .status-pill {
   padding: 2px var(--space-2);
@@ -900,7 +862,6 @@ kbd {
 @media (max-width: 780px) {
   .topbar, .content-scroll { padding-right: var(--space-4); padding-left: var(--space-4); }
   .search-trigger span, .search-trigger kbd { display: none; }
-  .today-intro { align-items: flex-start; }
   .quick-hint { display: none; }
   .quick-add { grid-template-columns: 20px minmax(0, 1fr) auto; }
   .summary-grid.three, .feature-grid, .money-grid, .settings-grid { grid-template-columns: 1fr; }
