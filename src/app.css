@@ -122,13 +122,11 @@ body {
   line-height: 1.45;
 }
 
-/* When the OS provides a translucent backdrop (Mica on Windows 11, vibrancy on
-   macOS), thin the shell so it shows through. These stay semi-opaque rather
-   than fully transparent: if the effect is unavailable the window still reads
-   as a normal dark surface instead of showing raw webview background. */
-body.has-window-effect,
-body.has-window-effect .app-shell { background: rgb(25 29 28 / 0.72); }
-body.has-window-effect .sidebar { background: rgb(0 0 0 / 0.16); }
+/* Window translucency (Mica) is disabled: WebView2 renders over the DWM
+   backdrop, and making the window transparent to expose it caused visual
+   artifacts on this setup. The shell stays solid; depth comes from the
+   surface layering and elevation below rather than from OS blur. */
+body.has-window-effect .sidebar { background: rgb(0 0 0 / 0.18); }
 
 h1, h2, h3, h4 { margin: 0; font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 h1 { font-size: var(--text-20); }
@@ -146,6 +144,10 @@ button:disabled { cursor: default; opacity: 0.4; }
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
+/* Fields inside a container that already shows a focus ring must not draw a
+   second one; the container is the focus affordance. */
+.quick-add input:focus-visible,
+.inline-search input:focus-visible { outline: none; }
 
 /* Numerals line up in columns. */
 .metric-value strong,
@@ -300,6 +302,9 @@ kbd { font-variant-numeric: tabular-nums; }
   letter-spacing: 0;
   text-transform: none;
 }
+/* Kickers can carry raw data values ("categories"), so lift the first letter
+   only. `capitalize` would wrongly title-case whole sentences. */
+.panel-kicker::first-letter { text-transform: uppercase; }
 
 .topbar-actions { display: flex; align-items: center; gap: var(--space-2); }
 
@@ -450,7 +455,7 @@ kbd {
   box-shadow: var(--shadow-raised);
   transition: box-shadow var(--duration) var(--ease);
 }
-.quick-add:focus-within { box-shadow: var(--shadow-raised), 0 0 0 3px var(--accent-fill); }
+.quick-add:focus-within { box-shadow: var(--shadow-raised), 0 0 0 3px var(--accent-fill), inset 0 0 0 1px var(--accent-line); }
 .quick-plus { color: var(--text-tertiary); }
 .quick-add input, .inline-search input {
   min-width: 0;
@@ -468,8 +473,10 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
+  flex: 0 0 auto;
   min-height: 30px;
   padding: 0 var(--space-3);
+  white-space: nowrap;
   color: var(--on-accent);
   font-size: var(--text-13);
   font-weight: var(--weight-medium);
@@ -626,7 +633,8 @@ kbd {
 .empty-inline { padding: var(--space-5) var(--space-4); color: var(--text-tertiary); font-size: var(--text-13); }
 .empty-state { display: flex; align-items: center; justify-content: center; gap: var(--space-3); color: var(--text-secondary); }
 .empty-state.compact { min-height: 104px; justify-content: flex-start; padding: var(--space-5); }
-.empty-state.large { min-height: 320px; flex-direction: column; text-align: center; }
+/* Empty panels size to their message instead of reserving a screenful of void. */
+.empty-state.large { min-height: 176px; flex-direction: column; padding: var(--space-6); text-align: center; }
 .empty-state strong { display: block; color: var(--text-primary); font-size: var(--text-13); }
 .empty-state p { margin-top: var(--space-1); font-size: var(--text-12); }
 .empty-icon {
@@ -654,18 +662,24 @@ kbd {
 
 .section-toolbar { display: flex; align-items: center; gap: var(--space-2); max-width: 1120px; margin: 0 auto var(--space-4); }
 
+/* One line. Scrolls rather than wrapping to a second row. */
 .segmented {
   display: flex;
-  flex-wrap: wrap;
   gap: 1px;
+  min-width: 0;
   padding: 2px;
+  overflow-x: auto;
   background: var(--surface-hover);
   border: 0;
   border-radius: var(--radius-control);
+  scrollbar-width: none;
 }
+.segmented::-webkit-scrollbar { display: none; }
 .segmented button {
   height: 24px;
+  flex: 0 0 auto;
   padding: 0 var(--space-2);
+  white-space: nowrap;
   color: var(--text-secondary);
   font-size: var(--text-12);
   background: transparent;
