@@ -848,6 +848,19 @@
           </Card>
         </div>
       {:else if active === "tasks"}
+        <div class="page-actions">
+          <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
+          <button
+            class="primary-button"
+            type="button"
+            on:click={() => openTaskEditor()}
+          ><Icon name="plus" size={15} /> New task</button>
+          <button
+            class="primary-button"
+            type="button"
+            on:click={() => void openTaskWidget()}
+          ><Icon name="spark" size={15} /> Pop out widget</button>
+        </div>
         <Card padded={false}>
           <SectionHeader slot="header" title="All tasks" subtext={taskFilterSubtext}>
             <svelte:fragment slot="actions">
@@ -864,17 +877,6 @@
               <label class="inline-search">
                 <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
               </label>
-              <button
-                class="primary-button"
-                type="button"
-                on:click={() => openTaskEditor()}
-              ><Icon name="plus" size={15} /> New task</button>
-              <button
-                class="primary-button"
-                type="button"
-                on:click={() => void openTaskWidget()}
-              ><Icon name="spark" size={15} /> Pop out widget</button>
-              <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
             </svelte:fragment>
           </SectionHeader>
           {#if loading}

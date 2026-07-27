@@ -622,6 +622,18 @@ kbd {
    Secondary screens
    ============================================================= */
 
+/* Page-level actions (act on the whole screen, not a filtered list) that sit
+   above a card's own SectionHeader. Wraps rather than clipping. */
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  row-gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+
 /* One line. Scrolls rather than wrapping to a second row. */
 .segmented {
   display: flex;
