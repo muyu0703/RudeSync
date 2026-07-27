@@ -892,13 +892,42 @@ git commit -m "feat(ui): rebuild Work on the card layout"
 
 ```svelte
   <StatRow>
-    <StatCard icon="invoice" label="Outstanding" value={…} detail="Invoiced, not yet paid" tone="warning" />
-    <StatCard icon="arrow-up-right" label="Received" value={…} detail="This month" tone="positive" />
-    <StatCard icon="clock" label="Overdue invoices" value={String(overdueInvoices)} detail={overdueInvoices === 0 ? "All current" : "Past due date"} tone={overdueInvoices > 0 ? "danger" : "neutral"} />
+    <StatCard
+      icon="invoice"
+      label="Outstanding"
+      value={moneyOutstanding.length ? formatMoney(moneyOutstanding[0].amountMinor, moneyOutstanding[0].currency) : "None"}
+      detail="Invoiced, not yet paid"
+      tone={moneyOutstanding.length ? "warning" : "neutral"}
+    />
+    <StatCard
+      icon="arrow-up-right"
+      label="Received"
+      value={moneyReceived.length ? formatMoney(moneyReceived[0].amountMinor, moneyReceived[0].currency) : "None"}
+      detail="This month"
+      tone={moneyReceived.length ? "positive" : "neutral"}
+    />
+    <StatCard
+      icon="clock"
+      label="Overdue invoices"
+      value={String(overdueInvoices)}
+      detail={overdueInvoices === 0 ? "All current" : "Past due date"}
+      tone={overdueInvoices > 0 ? "danger" : "neutral"}
+    />
   </StatRow>
 ```
 
-Compute values with the Task 2 helpers against the view's existing `invoices` array, formatting with the file's existing money formatter. Render the first currency only, with any others in `detail`.
+Declare the three values reactively, using the view's existing `invoices` array
+and its existing `formatMoney(minor, currency)` helper:
+
+```ts
+  $: moneyOutstanding = outstandingByCurrency(invoices);
+  $: moneyReceived = receivedInMonth(invoices, today);
+  $: overdueInvoices = overdueInvoiceCount(invoices, today);
+```
+
+Reuse the file's existing `today` ISO string; do not introduce a second one.
+Render the first currency only. When more than one currency is present, append
+the rest to `detail` rather than adding them together.
 
 - [ ] **Step 2: Convert the invoice and payment panels**
 
@@ -943,12 +972,32 @@ This screen is the most chart-heavy in Cycle 2, so it reserves the most slots.
       <StatRow>
         <StatCard icon="check" label="Tasks done" value={String(completedThisWeek.length)} detail="This week" tone="positive" />
         <StatCard icon="work" label="Work recorded" value={String(reviewWorkEntries.length)} detail="Entries logged" tone="neutral" />
-        <StatCard icon="arrow-up-right" label="Received" value={…} detail="This month" tone="positive" />
+        <StatCard
+          icon="arrow-up-right"
+          label="Received"
+          value={reviewReceived.length ? formatStatMoney(reviewReceived[0]) : "None"}
+          detail="This month"
+          tone={reviewReceived.length ? "positive" : "neutral"}
+        />
         <StatCard icon="loan" label="Loan payments due" value={String(upcomingInstallmentCount)} detail="Next 30 days" tone="warning" />
       </StatRow>
 ```
 
-Use the arrays the screen already loads (`completedThisWeek`, `reviewWorkEntries`, `reviewInvoices`, `reviewLoans`). Derive `upcomingInstallmentCount` from unpaid installments with a due date within 30 days of today.
+Use the arrays the screen already loads (`completedThisWeek`, `reviewWorkEntries`, `reviewInvoices`, `reviewLoans`) and the `formatStatMoney` helper added to `App.svelte` in Task 4:
+
+```ts
+  $: reviewReceived = receivedInMonth(reviewInvoices, todayIso);
+  $: upcomingInstallmentCount = reviewLoans
+    .flatMap((loan) => loan.installments)
+    .filter(
+      (installment) =>
+        !installment.paid &&
+        installment.dueDate >= todayIso &&
+        installment.dueDate <= addDays(todayIso, 30),
+    ).length;
+```
+
+`addDays(date: string, offsetDays: number)` is exported from `src/lib/domain/date.ts`; import it if it is not already in scope. `LoanInstallment` has the fields `{ id, installmentNumber, dueDate, paid, paidDate }`.
 
 - [ ] **Step 2: Weekly progress as a MeterBar**
 
