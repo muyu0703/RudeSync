@@ -1,6 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import Card from "../../components/Card.svelte";
   import Icon from "../../components/Icon.svelte";
+  import MeterBar from "../../components/MeterBar.svelte";
+  import SectionHeader from "../../components/SectionHeader.svelte";
+  import StatCard from "../../components/StatCard.svelte";
+  import StatRow from "../../components/StatRow.svelte";
   import {
     createMoneyService,
     effectiveInvoiceStatus,
@@ -58,8 +63,7 @@
   $: clientsById = new Map(clients.map((client) => [client.id, client]));
   $: projectsById = new Map(projects.map((project) => [project.id, project]));
   $: activeProjects = projects.filter((project) => project.status === "active");
-  $: completedThisWeek = countCompletedThisWeek(workEntries);
-  $: expectedTotals = groupTotalsByCurrency(activeProjects);
+  $: remainingTotals = groupRemainingByCurrency(activeProjects);
   $: normalizedSearch = searchQuery.trim().toLocaleLowerCase();
   $: filteredProjects = projects.filter((project) => {
     if (
@@ -268,22 +272,6 @@
     return `${year}-${month}-${day}`;
   }
 
-  function countCompletedThisWeek(entries: WorkEntry[]): number {
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const day = today.getDay();
-    const distanceFromMonday = day === 0 ? 6 : day - 1;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - distanceFromMonday);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const from = localIsoDay(monday);
-    const to = localIsoDay(sunday);
-    return entries.filter(
-      (entry) => entry.workDate >= from && entry.workDate <= to,
-    ).length;
-  }
-
   // A project is worth the sum of its milestones. `quotedTotalMinor` is only a
   // legacy reference figure, used as a fallback for a project that has no
   // milestone plan yet. Single definition so the project card and the
@@ -292,21 +280,6 @@
     return project.milestones.length > 0
       ? planTotalMinor(project.milestones)
       : project.quotedTotalMinor;
-  }
-
-  function groupTotalsByCurrency(
-    values: Project[],
-  ): Array<{ currency: string; totalMinor: number }> {
-    const totals = new Map<string, number>();
-    for (const project of values) {
-      totals.set(
-        project.currency,
-        (totals.get(project.currency) ?? 0) + projectTotalMinor(project),
-      );
-    }
-    return [...totals.entries()]
-      .map(([currency, totalMinor]) => ({ currency, totalMinor }))
-      .sort((a, b) => a.currency.localeCompare(b.currency));
   }
 
   function formatMoney(minor: number, currency: string): string {
@@ -353,6 +326,25 @@
       .reduce((sum, milestone) => sum + milestone.amountMinor, 0);
   }
 
+  // Money is per-currency only: each currency's remaining total is kept
+  // separate and never summed with another currency's total.
+  function groupRemainingByCurrency(
+    values: Project[],
+  ): Array<{ currency: string; totalMinor: number }> {
+    const totals = new Map<string, number>();
+    for (const project of values) {
+      const remaining = remainingToInvoiceMinor(project);
+      if (remaining <= 0) continue;
+      totals.set(
+        project.currency,
+        (totals.get(project.currency) ?? 0) + remaining,
+      );
+    }
+    return [...totals.entries()]
+      .map(([currency, totalMinor]) => ({ currency, totalMinor }))
+      .sort((a, b) => a.currency.localeCompare(b.currency));
+  }
+
   function workForProject(projectId: string): WorkEntry[] {
     return sortedWorkEntries.filter((entry) => entry.projectId === projectId);
   }
@@ -386,35 +378,24 @@
 </script>
 
 <section class="work-view" aria-label="Clients and project work" aria-busy={loading}>
-  <div class="summary-grid">
-    <article class="summary-card">
-      <span>Active projects</span>
-      <strong>{activeProjects.length}</strong>
-      <small>{clients.length} {clients.length === 1 ? "client" : "clients"} in your workspace</small>
-    </article>
-    <article class="summary-card">
-      <span>Completed this week</span>
-      <strong>{completedThisWeek}</strong>
-      <small>{workEntries.length} work {workEntries.length === 1 ? "record" : "records"} overall</small>
-    </article>
-    <article class="summary-card accent-card">
-      <span>Expected project value</span>
-      {#if expectedTotals.length === 0}
-        <strong>$0</strong>
-        <small>USD · active fixed-price work</small>
-      {:else if expectedTotals.length === 1}
-        <strong>{formatMoney(expectedTotals[0].totalMinor, expectedTotals[0].currency)}</strong>
-        <small>{expectedTotals[0].currency} · active fixed-price work</small>
-      {:else}
-        <strong>{expectedTotals.length} currencies</strong>
-        <small>
-          {expectedTotals
-            .map((total) => formatMoney(total.totalMinor, total.currency))
-            .join(" · ")}
-        </small>
-      {/if}
-    </article>
-  </div>
+  <StatRow>
+    <StatCard
+      icon="briefcase"
+      label="Active projects"
+      value={String(activeProjects.length)}
+      detail="In flight"
+      tone="neutral"
+    />
+    <StatCard
+      icon="invoice"
+      label="Remaining to invoice"
+      value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "$0"}
+      detail={remainingTotals.length > 1
+        ? remainingTotals.slice(1).map((total) => formatMoney(total.totalMinor, total.currency)).join(" · ")
+        : "Across active projects"}
+      tone="warning"
+    />
+  </StatRow>
 
   {#if errorMessage}
     <div class="work-error" role="alert">
@@ -425,72 +406,66 @@
     </div>
   {/if}
 
-  <section class="work-toolbar" aria-label="Work actions">
-    <label class="search-field">
-      <span class="sr-only">Search projects</span>
-      <Icon name="search" size={14} />
-      <input bind:value={searchQuery} type="search" placeholder="Search projects or clients" />
-    </label>
-    <div class="toolbar-actions">
-      <button class="secondary-button" type="button" on:click={() => openClientDialog()}>
-        <Icon name="plus" size={14} /> Client
-      </button>
-      <button
-        class="secondary-button"
-        type="button"
-        disabled={!clients.length}
-        title={!clients.length ? "Create a client first" : "Create a fixed-price project"}
-        on:click={() => openProjectDialog()}
-      >
-        <Icon name="briefcase" size={14} /> Project
-      </button>
-      <button class="primary-button" type="button" on:click={() => openWorkDialog()}>
-        <Icon name="check" size={14} /> Record work
-      </button>
-    </div>
-  </section>
+  <div class="page-actions">
+    <button class="primary-button" type="button" on:click={() => openClientDialog()}>
+      <Icon name="plus" size={15} /> Client
+    </button>
+    <button
+      class="primary-button"
+      type="button"
+      disabled={!clients.length}
+      title={!clients.length ? "Create a client first" : "Create a fixed-price project"}
+      on:click={() => openProjectDialog()}
+    >
+      <Icon name="briefcase" size={15} /> Project
+    </button>
+    <button class="primary-button" type="button" on:click={() => openWorkDialog()}>
+      <Icon name="check" size={15} /> Record work
+    </button>
+  </div>
 
-  <div class="work-layout">
-    <section class="panel projects-panel" aria-labelledby="projects-title">
-      <header class="panel-header">
-        <div>
-          <span class="panel-kicker">Project containers</span>
-          <h2 id="projects-title">
-            {filteredProjects.length}
-            {filteredProjects.length === 1 ? "project" : "projects"}
-          </h2>
-        </div>
-        {#if projects.length}
-          <span class="header-note">Fixed price · no timers</span>
-        {/if}
-      </header>
-
-      {#if clients.length}
-        <div class="client-filters" aria-label="Filter projects by client">
-          <button
-            class:active={selectedClientId === "all"}
-            type="button"
-            aria-pressed={selectedClientId === "all"}
-            on:click={() => (selectedClientId = "all")}
-          >
-            All <span>{projects.length}</span>
-          </button>
-          {#each clients as client (client.id)}
-            <button
-              class:active={selectedClientId === client.id}
-              type="button"
-              aria-pressed={selectedClientId === client.id}
-              on:click={() => (selectedClientId = client.id)}
-            >
-              {client.name} <span>{projectCount(client.id)}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
+  <div class="work-grid">
+    <div class="project-column">
+      <div class="list-header">
+        <SectionHeader
+          title={`${filteredProjects.length} ${filteredProjects.length === 1 ? "project" : "projects"}`}
+          subtext="Fixed price · no timers"
+        >
+          <svelte:fragment slot="actions">
+            {#if clients.length}
+              <div class="segmented" aria-label="Filter projects by client">
+                <button
+                  class:active={selectedClientId === "all"}
+                  type="button"
+                  aria-pressed={selectedClientId === "all"}
+                  on:click={() => (selectedClientId = "all")}
+                >All · {projects.length}</button>
+                {#each clients as client (client.id)}
+                  <button
+                    class:active={selectedClientId === client.id}
+                    type="button"
+                    aria-pressed={selectedClientId === client.id}
+                    on:click={() => (selectedClientId = client.id)}
+                  >{client.name} · {projectCount(client.id)}</button>
+                {/each}
+              </div>
+            {/if}
+            <label class="inline-search">
+              <Icon name="search" size={14} />
+              <input
+                bind:value={searchQuery}
+                type="search"
+                placeholder="Search projects or clients"
+                aria-label="Search projects or clients"
+              />
+            </label>
+          </svelte:fragment>
+        </SectionHeader>
+      </div>
 
       {#if loading}
-        <div class="project-skeletons" aria-label="Loading projects">
-          <i></i><i></i><i></i>
+        <div class="skeleton-list project-skeletons" aria-label="Loading projects">
+          <span></span><span></span><span></span>
         </div>
       {:else if filteredProjects.length}
         <div class="project-list">
@@ -498,18 +473,21 @@
             {@const client = clientsById.get(project.clientId)}
             {@const projectWork = workForProject(project.id)}
             {@const projectInvoices = invoicesForProject(project.id)}
-            <article class="project-card">
-              <div class="project-heading">
-                <div class="project-title">
-                  <span class={`status-dot ${project.status}`}></span>
-                  <div>
-                    <span class="client-name">{client?.name ?? "Unassigned client"}</span>
-                    <h3>{project.name}</h3>
-                  </div>
-                </div>
-                <div class="project-value">
+            <Card>
+              <SectionHeader slot="header" title={project.name} subtext={client?.name ?? "Unassigned client"}>
+                <svelte:fragment slot="actions">
+                  <span class="soft-badge">{project.status}</span>
+                </svelte:fragment>
+              </SectionHeader>
+
+              <div class="project-summary">
+                <div>
+                  <span>Contract value</span>
                   <strong>{formatMoney(projectTotalMinor(project), project.currency)}</strong>
-                  <span>{project.status}</span>
+                </div>
+                <div>
+                  <span>Remaining to invoice</span>
+                  <strong>{formatMoney(remainingToInvoiceMinor(project), project.currency)}</strong>
                 </div>
               </div>
 
@@ -536,35 +514,27 @@
                 </div>
               {/if}
 
-              <div class="milestone-section-header">
-                <span>Invoice milestones</span>
-                <b>
-                  {formatMoney(planTotalMinor(project.milestones), project.currency)} total ·
-                  {formatMoney(remainingToInvoiceMinor(project), project.currency)} remaining
-                </b>
-              </div>
-              <div class="milestone-grid" aria-label={`${project.name} invoice milestones`}>
+              <span class="group-label">Invoice milestones</span>
+              <div class="milestone-list" aria-label={`${project.name} invoice milestones`}>
                 {#each project.milestones as milestone, index (milestone.id ?? `${project.id}-${milestone.kind}-${index}`)}
-                  <div class="milestone">
-                    <span class="milestone-index">{String(index + 1).padStart(2, "0")}</span>
-                    <div>
-                      <span>{milestone.label}</span>
-                      <strong>{formatMoney(milestone.amountMinor, project.currency)}</strong>
-                    </div>
-                    <span class={`invoice-status ${milestoneEffectiveStatus(milestone)}`}>
-                      {milestoneStatusLabel(milestoneEffectiveStatus(milestone))}
-                    </span>
-                  </div>
+                  <MeterBar
+                    label={`${milestone.label} · ${formatMoney(milestone.amountMinor, project.currency)}`}
+                    value={milestoneEffectiveStatus(milestone) === "not-invoiced" ? 0 : 1}
+                    max={1}
+                    detail={milestoneStatusLabel(milestoneEffectiveStatus(milestone))}
+                    tone={milestoneEffectiveStatus(milestone) === "paid"
+                      ? "positive"
+                      : milestoneEffectiveStatus(milestone) === "invoiced"
+                        ? "warning"
+                        : "neutral"}
+                  />
                 {/each}
               </div>
 
               <section class="project-billing" aria-label={`${project.name} invoices and payments`}>
                 <header>
-                  <span>Invoices and payments</span>
-                  <b>
-                    {projectInvoices.length}
-                    {projectInvoices.length === 1 ? "invoice" : "invoices"}
-                  </b>
+                  <span class="group-label">Invoices and payments</span>
+                  <b>{projectInvoices.length} {projectInvoices.length === 1 ? "invoice" : "invoices"}</b>
                 </header>
                 {#if projectInvoices.length}
                   <div class="invoice-list">
@@ -611,7 +581,7 @@
 
               {#if projectWork.length}
                 <div class="project-work">
-                  <span class="project-work-label">Recent completed work</span>
+                  <span class="group-label">Recent completed work</span>
                   {#each projectWork.slice(0, 2) as entry (entry.id)}
                     <div class="mini-work-entry">
                       <span class="work-check"><Icon name="check" size={11} strokeWidth={2.3} /></span>
@@ -631,30 +601,30 @@
                   {projectWork.length === 1 ? "completed-work record" : "completed-work records"}
                 </span>
                 <div>
-                  <button type="button" on:click={() => openProjectDialog(project)}>
+                  <button class="text-button" type="button" on:click={() => openProjectDialog(project)}>
                     <Icon name="more" size={13} /> Edit
                   </button>
-                  <button type="button" on:click={() => openWorkDialog(project.id)}>
+                  <button class="text-button" type="button" on:click={() => openWorkDialog(project.id)}>
                     <Icon name="plus" size={13} /> Add work
                   </button>
                 </div>
               </footer>
-            </article>
+            </Card>
           {/each}
         </div>
       {:else if !clients.length}
-        <div class="empty-state">
+        <div class="empty-state large">
           <span class="empty-icon"><Icon name="briefcase" size={21} /></span>
-          <h3>Start with a client</h3>
+          <strong>Start with a client</strong>
           <p>Clients organize your fixed-price projects, invoices, and completed work.</p>
           <button class="primary-button" type="button" on:click={() => openClientDialog()}>
             <Icon name="plus" size={14} /> Add your first client
           </button>
         </div>
       {:else if !projects.length}
-        <div class="empty-state">
+        <div class="empty-state large">
           <span class="empty-icon"><Icon name="briefcase" size={21} /></span>
-          <h3>Create the first project container</h3>
+          <strong>Create the first project container</strong>
           <p>It starts with an editable 50% kickoff and 50% completion plan.</p>
           <button class="primary-button" type="button" on:click={() => openProjectDialog()}>
             <Icon name="plus" size={14} /> Create project
@@ -663,33 +633,33 @@
       {:else}
         <div class="empty-state compact">
           <span class="empty-icon"><Icon name="search" size={19} /></span>
-          <h3>No matching projects</h3>
-          <p>Clear the search or choose a different client.</p>
-          <button
-            class="text-button"
-            type="button"
-            on:click={() => {
-              searchQuery = "";
-              selectedClientId = "all";
-            }}
-          >Clear filters</button>
+          <div>
+            <strong>No matching projects</strong>
+            <p>Clear the search or choose a different client.</p>
+            <button
+              class="text-button"
+              type="button"
+              on:click={() => {
+                searchQuery = "";
+                selectedClientId = "all";
+              }}
+            >Clear filters</button>
+          </div>
         </div>
       {/if}
-    </section>
+    </div>
 
     <aside class="side-stack">
-      <section class="panel clients-panel" aria-labelledby="clients-title">
-        <header class="side-header">
-          <div>
-            <span class="panel-kicker">Relationships</span>
-            <h2 id="clients-title">Clients</h2>
-          </div>
-          <button type="button" aria-label="Add client" on:click={() => openClientDialog()}>
-            <Icon name="plus" size={14} />
-          </button>
-        </header>
+      <Card padded={false}>
+        <SectionHeader slot="header" title="Clients" subtext="Relationships">
+          <svelte:fragment slot="actions">
+            <button class="text-button" type="button" aria-label="Add client" on:click={() => openClientDialog()}>
+              <Icon name="plus" size={14} />
+            </button>
+          </svelte:fragment>
+        </SectionHeader>
         {#if loading}
-          <div class="side-skeleton"><i></i><i></i><i></i></div>
+          <div class="skeleton-list"><span></span><span></span><span></span></div>
         {:else if clients.length}
           <div class="client-list">
             {#each clients as client (client.id)}
@@ -724,20 +694,23 @@
         {:else}
           <p class="side-empty">No clients yet.</p>
         {/if}
-      </section>
+      </Card>
 
-      <section class="panel activity-panel" aria-labelledby="activity-title">
-        <header class="side-header">
-          <div>
-            <span class="panel-kicker">Completed work</span>
-            <h2 id="activity-title">Recent records</h2>
-          </div>
-          <button type="button" aria-label="Record completed work" on:click={() => openWorkDialog()}>
-            <Icon name="plus" size={14} />
-          </button>
-        </header>
+      <Card padded={false}>
+        <SectionHeader slot="header" title="Recent records" subtext="Completed work">
+          <svelte:fragment slot="actions">
+            <button
+              class="text-button"
+              type="button"
+              aria-label="Record completed work"
+              on:click={() => openWorkDialog()}
+            >
+              <Icon name="plus" size={14} />
+            </button>
+          </svelte:fragment>
+        </SectionHeader>
         {#if loading}
-          <div class="side-skeleton"><i></i><i></i><i></i></div>
+          <div class="skeleton-list"><span></span><span></span><span></span></div>
         {:else if sortedWorkEntries.length}
           <div class="activity-list">
             {#each sortedWorkEntries.slice(0, 6) as entry (entry.id)}
@@ -778,7 +751,7 @@
             <button class="text-button" type="button" on:click={() => openWorkDialog()}>Record work</button>
           </div>
         {/if}
-      </section>
+      </Card>
     </aside>
   </div>
 </section>
@@ -840,81 +813,18 @@
 {/if}
 
 <style>
-  .work-view {
-    display: grid;
-    gap: 16px;
-    max-width: 1220px;
-    margin: 0 auto;
-    color: var(--text-primary, #edf5f0);
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .summary-card {
-    display: flex;
-    min-width: 0;
-    min-height: 104px;
-    flex-direction: column;
-    justify-content: center;
-    padding: 17px 19px;
-    background: var(--surface-1, #0c1210);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 11px;
-  }
-
-  .summary-card > span {
-    color: var(--text-muted, #75847b);
-    font-size: 9.5px;
-    font-weight: 620;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  .summary-card strong {
-    margin-top: 5px;
-    overflow: hidden;
-    color: var(--text-primary, #edf5f0);
-    font-size: 23px;
-    font-weight: 650;
-    letter-spacing: -0.035em;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .summary-card small {
-    margin-top: 4px;
-    overflow: hidden;
-    color: var(--text-faint, #536158);
-    font-size: 9.5px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .summary-card.accent-card {
-    background: linear-gradient(135deg, rgba(67, 209, 127, 0.08), rgba(67, 209, 127, 0.025));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.26));
-  }
-
-  .summary-card.accent-card strong {
-    color: var(--accent-bright, #60e596);
-  }
-
   .work-error {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-4);
     min-height: 40px;
-    padding: 8px 12px 8px 14px;
-    color: #ffd2ce;
-    font-size: 11px;
-    background: rgba(164, 49, 44, 0.12);
-    border: 1px solid rgba(239, 118, 111, 0.24);
-    border-radius: 9px;
+    padding: var(--space-2) var(--space-3);
+    color: var(--danger);
+    font-size: var(--text-12);
+    background: var(--danger-fill);
+    border-radius: var(--radius-control);
+    margin: 0 0 var(--space-4);
   }
 
   .work-error button {
@@ -926,304 +836,60 @@
     color: inherit;
     background: transparent;
     border: 0;
-    border-radius: 6px;
-    cursor: pointer;
+    border-radius: var(--radius-control);
   }
 
-  .work-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px;
-    background: var(--surface-1, #0c1210);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 10px;
-  }
-
-  .search-field {
-    display: flex;
-    width: min(330px, 100%);
-    height: 34px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    color: var(--text-faint, #536158);
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 8px;
-  }
-
-  .search-field:focus-within {
-    color: var(--accent, #43d17f);
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.26));
-  }
-
-  .search-field input {
-    width: 100%;
-    min-width: 0;
-    height: 100%;
-    padding: 0;
-    color: var(--text-primary, #edf5f0);
-    font: inherit;
-    font-size: 11px;
-    background: transparent;
-    border: 0;
-    outline: 0;
-  }
-
-  .search-field input::placeholder {
-    color: var(--text-faint, #536158);
-  }
-
-  .toolbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-
-  .primary-button,
-  .secondary-button {
-    display: inline-flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 0 12px;
-    font: inherit;
-    font-size: 10.5px;
-    font-weight: 650;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .primary-button {
-    color: #07120c;
-    background: var(--accent, #43d17f);
-    border: 1px solid var(--accent, #43d17f);
-  }
-
-  .primary-button:hover {
-    background: var(--accent-bright, #60e596);
-  }
-
-  .secondary-button {
-    color: var(--text-secondary, #aebdb4);
-    background: transparent;
-    border: 1px solid var(--border-strong, #2a3a31);
-  }
-
-  .secondary-button:hover {
-    color: var(--text-primary, #edf5f0);
-    background: var(--surface-raised, #141d18);
-  }
-
-  .primary-button:disabled,
-  .secondary-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.43;
-  }
-
-  button:focus-visible,
-  a:focus-visible {
-    outline: 2px solid var(--accent, #43d17f);
-    outline-offset: 2px;
-  }
-
-  .work-layout {
+  .work-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 292px;
     align-items: start;
-    gap: 14px;
+    gap: var(--space-4);
   }
 
-  .panel {
-    min-width: 0;
-    background: var(--surface-1, #0c1210);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 11px;
+  @media (max-width: 1020px) {
+    .work-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
-  .projects-panel {
-    min-height: 430px;
-    padding: 0 17px 17px;
-  }
-
-  .panel-header,
-  .side-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
-
-  .panel-header {
-    min-height: 68px;
-  }
-
-  .panel-kicker {
-    color: var(--text-muted, #75847b);
-    font-size: 8.5px;
-    font-weight: 700;
-    letter-spacing: 0.11em;
-    text-transform: uppercase;
-  }
-
-  .panel-header h2,
-  .side-header h2 {
-    margin: 3px 0 0;
-    color: var(--text-primary, #edf5f0);
-    font-size: 14px;
-    font-weight: 630;
-    letter-spacing: -0.015em;
-  }
-
-  .header-note {
-    color: var(--text-faint, #536158);
-    font-size: 9px;
-  }
-
-  .client-filters {
-    display: flex;
-    gap: 5px;
-    margin: 0 -2px 13px;
-    padding: 1px 2px 7px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .client-filters::-webkit-scrollbar {
-    display: none;
-  }
-
-  .client-filters button {
-    display: inline-flex;
-    min-height: 28px;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 6px;
-    padding: 0 9px;
-    color: var(--text-muted, #75847b);
-    font: inherit;
-    font-size: 9.5px;
-    background: transparent;
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 99px;
-    cursor: pointer;
-  }
-
-  .client-filters button:hover,
-  .client-filters button.active {
-    color: var(--text-primary, #edf5f0);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.26));
-  }
-
-  .client-filters button span {
-    color: var(--text-faint, #536158);
-    font-size: 8.5px;
-  }
-
-  .client-filters button.active span {
-    color: var(--accent, #43d17f);
+  .list-header {
+    margin-bottom: var(--space-3);
   }
 
   .project-list {
     display: grid;
-    gap: 10px;
+    gap: var(--space-4);
   }
 
-  .project-card {
-    min-width: 0;
-    padding: 15px;
-    background: var(--surface-2, #101713);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 10px;
-  }
-
-  .project-card:hover {
-    border-color: var(--border-strong, #2a3a31);
-  }
-
-  .project-heading {
+  .project-summary {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
+    gap: var(--space-5);
+    margin-bottom: var(--space-3);
   }
 
-  .project-title {
+  .project-summary > div {
     display: flex;
-    min-width: 0;
-    align-items: flex-start;
-    gap: 9px;
-  }
-
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 auto;
-    margin-top: 15px;
-    background: var(--text-faint, #536158);
-    border-radius: 50%;
-    box-shadow: 0 0 0 3px rgba(83, 97, 88, 0.1);
-  }
-
-  .status-dot.active {
-    background: var(--accent, #43d17f);
-    box-shadow: 0 0 0 3px var(--accent-soft, rgba(67, 209, 127, 0.1));
-  }
-
-  .status-dot.completed {
-    background: var(--blue, #67a8e6);
-    box-shadow: 0 0 0 3px rgba(103, 168, 230, 0.1);
-  }
-
-  .client-name {
-    color: var(--text-muted, #75847b);
-    font-size: 9px;
-  }
-
-  .project-title h3 {
-    margin: 2px 0 0;
-    overflow: hidden;
-    color: var(--text-primary, #edf5f0);
-    font-size: 13px;
-    font-weight: 620;
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .project-value {
-    display: flex;
-    flex: 0 0 auto;
     flex-direction: column;
-    align-items: flex-end;
+    gap: 2px;
   }
 
-  .project-value strong {
-    color: var(--text-primary, #edf5f0);
-    font-size: 12.5px;
-    font-weight: 650;
+  .project-summary span {
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+  }
+
+  .project-summary strong {
+    font-size: var(--text-15);
+    font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
-  }
-
-  .project-value span {
-    margin-top: 3px;
-    color: var(--text-faint, #536158);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
   }
 
   .project-description {
     display: -webkit-box;
-    margin: 11px 0 0 16px;
+    margin: 0 0 var(--space-3);
     overflow: hidden;
-    color: var(--text-muted, #75847b);
-    font-size: 10.5px;
+    color: var(--text-secondary);
+    font-size: var(--text-12);
     line-height: 1.55;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1232,8 +898,9 @@
 
   .project-links {
     display: flex;
+    flex-wrap: wrap;
     gap: 5px;
-    margin: 8px 0 0 16px;
+    margin: 0 0 var(--space-3);
     overflow: hidden;
   }
 
@@ -1244,9 +911,9 @@
     gap: 4px;
     padding: 3px 6px;
     overflow: hidden;
-    color: var(--accent, #43d17f);
-    font-size: 8.5px;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    font-size: var(--text-11);
+    background: var(--accent-fill);
     border-radius: 5px;
     text-decoration: none;
     text-overflow: ellipsis;
@@ -1257,143 +924,76 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 10px 0 0 16px;
-    color: var(--text-faint, #536158);
-    font-size: 9.5px;
+    margin: 0 0 var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
   }
 
-  .milestone-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 14px;
-    margin-bottom: 8px;
+  .group-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
   }
 
-  .milestone-section-header span {
-    color: var(--text-faint, #536158);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .milestone-section-header b {
-    color: var(--text-muted, #75847b);
-    font-size: 8.5px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .milestone-grid {
+  .milestone-list {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .milestone {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-    padding: 9px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 8px;
-  }
-
-  .milestone-index {
-    display: grid;
-    width: 27px;
-    height: 27px;
-    place-items: center;
-    color: var(--accent, #43d17f);
-    font-size: 8px;
-    font-weight: 700;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-    border-radius: 50%;
-  }
-
-  .milestone > div {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .milestone > div span {
-    overflow: hidden;
-    color: var(--text-secondary, #aebdb4);
-    font-size: 9.5px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .milestone > div strong {
-    margin-top: 2px;
-    color: var(--text-muted, #75847b);
-    font-size: 9px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
   }
 
   .project-billing {
-    margin-top: 13px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--separator);
   }
 
   .project-billing > header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
   }
 
-  .project-billing > header > span {
-    color: var(--text-faint, #536158);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  .project-billing > header .group-label {
+    margin-bottom: 0;
   }
 
   .project-billing > header > b {
-    color: var(--text-muted, #75847b);
-    font-size: 8.5px;
-    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
   }
 
   .project-billing > p {
     margin: 0;
-    padding: 8px 10px;
-    color: var(--text-faint, #536158);
-    font-size: 9px;
-    background: var(--surface-0, #090d0b);
-    border: 1px dashed var(--border-subtle, #1b2821);
-    border-radius: 7px;
+    padding: var(--space-2) var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+    background: var(--surface-raised);
+    border: 1px dashed var(--separator-strong);
+    border-radius: var(--radius-control);
   }
 
   .invoice-list {
     display: grid;
-    gap: 7px;
+    gap: var(--space-2);
   }
 
   .invoice-record {
     min-width: 0;
-    padding: 9px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 8px;
+    padding: var(--space-3);
+    background: var(--surface-raised);
+    border-radius: var(--radius-control);
   }
 
   .invoice-main {
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     min-width: 0;
   }
 
@@ -1402,8 +1002,8 @@
     width: 27px;
     height: 27px;
     place-items: center;
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
     border-radius: 7px;
   }
 
@@ -1415,9 +1015,9 @@
 
   .invoice-copy strong {
     overflow: hidden;
-    color: var(--text-secondary, #aebdb4);
-    font-size: 9.5px;
-    font-weight: 620;
+    color: var(--text-primary);
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1428,39 +1028,37 @@
     gap: 4px;
     margin-top: 2px;
     overflow: hidden;
-    color: var(--text-faint, #536158);
-    font-size: 8px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .invoice-copy i {
-    color: var(--border-strong, #2a3a31);
+    color: var(--text-quaternary);
     font-style: normal;
   }
 
   .invoice-status {
     padding: 3px 6px;
-    color: var(--text-muted, #75847b);
-    font-size: 7.5px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    background: var(--surface-raised, #141d18);
-    border-radius: 99px;
-    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
+    background: var(--surface-active);
+    border-radius: var(--radius-pill);
     white-space: nowrap;
   }
 
   .invoice-status.paid {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
   }
 
   .invoice-status.partially-paid,
   .invoice-status.overdue,
   .invoice-status.invoiced {
-    color: var(--amber, #e6b85c);
-    background: var(--amber-soft, rgba(230, 184, 92, 0.1));
+    color: var(--amber);
+    background: var(--amber-fill);
   }
 
   .invoice-total {
@@ -1471,17 +1069,17 @@
   }
 
   .invoice-total strong {
-    color: var(--text-primary, #edf5f0);
-    font-size: 9px;
-    font-weight: 650;
+    color: var(--text-primary);
+    font-size: var(--text-12);
+    font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
   .invoice-total span {
     margin-top: 2px;
-    color: var(--text-faint, #536158);
-    font-size: 7.5px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -1489,9 +1087,9 @@
   .invoice-payments {
     display: grid;
     gap: 5px;
-    margin: 8px 0 0 35px;
-    padding-top: 7px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    margin: var(--space-2) 0 0 35px;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--separator);
   }
 
   .invoice-payments > div {
@@ -1499,18 +1097,18 @@
     grid-template-columns: 15px minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 6px;
-    color: var(--text-muted, #75847b);
-    font-size: 8px;
+    color: var(--text-secondary);
+    font-size: var(--text-11);
   }
 
   .invoice-payments time {
-    color: var(--text-faint, #536158);
+    color: var(--text-tertiary);
   }
 
   .invoice-payments strong {
-    color: var(--accent, #43d17f);
-    font-size: 8px;
-    font-weight: 650;
+    color: var(--accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1519,32 +1117,24 @@
     width: 14px;
     height: 14px;
     place-items: center;
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
     border-radius: 50%;
   }
 
   .project-work {
     display: grid;
-    gap: 7px;
-    margin-top: 13px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
-  }
-
-  .project-work-label {
-    color: var(--text-faint, #536158);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--separator);
   }
 
   .mini-work-entry {
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 7px;
+    gap: var(--space-2);
   }
 
   .work-check {
@@ -1552,120 +1142,66 @@
     width: 17px;
     height: 17px;
     place-items: center;
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
     border-radius: 50%;
   }
 
   .mini-work-entry strong {
     overflow: hidden;
-    color: var(--text-secondary, #aebdb4);
-    font-size: 9.5px;
-    font-weight: 550;
+    color: var(--text-secondary);
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .mini-work-entry time {
-    color: var(--text-faint, #536158);
-    font-size: 8.5px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
   }
 
   .mini-work-entry button {
-    padding: 2px 4px;
-    color: var(--text-muted, #75847b);
+    padding: 2px 5px;
+    color: var(--text-secondary);
     font: inherit;
-    font-size: 8.5px;
+    font-size: var(--text-11);
     background: transparent;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .mini-work-entry button:hover {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
   }
 
   .project-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--separator);
   }
 
   .project-footer > span {
-    color: var(--text-faint, #536158);
-    font-size: 8.5px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
   }
 
   .project-footer > div {
     display: flex;
     align-items: center;
-    gap: 5px;
-  }
-
-  .project-footer button,
-  .text-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 5px;
-    color: var(--accent, #43d17f);
-    font: inherit;
-    font-size: 9.5px;
-    font-weight: 620;
-    background: transparent;
-    border: 0;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-
-  .project-footer button:hover,
-  .text-button:hover {
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-  }
-
-  .side-stack {
-    display: grid;
-    gap: 14px;
-  }
-
-  .clients-panel,
-  .activity-panel {
-    padding: 0 13px 12px;
-  }
-
-  .side-header {
-    min-height: 62px;
-    padding: 0 2px;
-  }
-
-  .side-header button {
-    display: grid;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    place-items: center;
-    color: var(--text-muted, #75847b);
-    background: transparent;
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 7px;
-    cursor: pointer;
-  }
-
-  .side-header button:hover {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.26));
+    gap: 2px;
   }
 
   .client-list {
     display: grid;
     gap: 2px;
+    padding: 0 var(--space-2) var(--space-2);
   }
 
   .client-row {
@@ -1677,19 +1213,19 @@
     padding: 2px 4px 2px 3px;
     color: inherit;
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--radius-control);
   }
 
   .client-row:hover,
   .client-row.active {
-    background: var(--surface-hover, rgba(76, 154, 109, 0.06));
+    background: var(--surface-hover);
   }
 
   .client-select {
     display: grid;
     grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 9px;
+    gap: var(--space-2);
     min-width: 0;
     min-height: 43px;
     padding: 3px 4px;
@@ -1707,17 +1243,17 @@
     height: 27px;
     padding: 0;
     place-items: center;
-    color: var(--text-faint, #536158);
+    color: var(--text-tertiary);
     background: transparent;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .client-edit:hover,
   .client-edit:focus-visible {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
   }
 
   .client-avatar {
@@ -1725,12 +1261,12 @@
     width: 30px;
     height: 30px;
     place-items: center;
-    color: var(--accent, #43d17f);
-    font-size: 8px;
-    font-weight: 750;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-    border: 1px solid var(--accent-border, rgba(67, 209, 127, 0.26));
-    border-radius: 8px;
+    color: var(--accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    background: var(--accent-fill);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius-control);
   }
 
   .client-copy {
@@ -1741,9 +1277,9 @@
 
   .client-copy strong {
     overflow: hidden;
-    color: var(--text-secondary, #aebdb4);
-    font-size: 10px;
-    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1751,16 +1287,15 @@
   .client-copy small {
     margin-top: 2px;
     overflow: hidden;
-    color: var(--text-faint, #536158);
-    font-size: 8.5px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .client-select b {
-    color: var(--text-faint, #536158);
-    font-size: 8px;
-    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
   }
 
   .activity-list {
@@ -1770,9 +1305,10 @@
   .activity-list article {
     display: grid;
     grid-template-columns: 9px minmax(0, 1fr) 26px;
-    gap: 8px;
-    padding: 9px 5px;
-    border-bottom: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2);
+    margin: 0 var(--space-2);
+    border-bottom: 1px solid var(--separator);
   }
 
   .activity-list article:last-child {
@@ -1783,9 +1319,9 @@
     width: 6px;
     height: 6px;
     margin-top: 5px;
-    background: var(--accent, #43d17f);
+    background: var(--accent);
     border-radius: 50%;
-    box-shadow: 0 0 0 3px var(--accent-soft, rgba(67, 209, 127, 0.1));
+    box-shadow: 0 0 0 3px var(--accent-fill);
   }
 
   .activity-list article > div {
@@ -1796,9 +1332,9 @@
 
   .activity-list strong {
     overflow: hidden;
-    color: var(--text-secondary, #aebdb4);
-    font-size: 9.5px;
-    font-weight: 580;
+    color: var(--text-secondary);
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
     line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1807,8 +1343,8 @@
   .activity-list article > div > span {
     margin-top: 2px;
     overflow: hidden;
-    color: var(--text-faint, #536158);
-    font-size: 8.5px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1827,9 +1363,9 @@
     gap: 3px;
     padding: 2px 5px;
     overflow: hidden;
-    color: var(--accent, #43d17f);
-    font-size: 8px;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    font-size: var(--text-11);
+    background: var(--accent-fill);
     border-radius: 4px;
     text-decoration: none;
     text-overflow: ellipsis;
@@ -1842,162 +1378,35 @@
     height: 25px;
     padding: 0;
     place-items: center;
-    color: var(--text-faint, #536158);
+    color: var(--text-tertiary);
     background: transparent;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .entry-edit:hover,
   .entry-edit:focus-visible {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    background: var(--accent-fill);
   }
 
   .side-empty {
-    margin: 2px 4px 8px;
-    color: var(--text-faint, #536158);
-    font-size: 9.5px;
+    margin: 2px var(--space-2) var(--space-2);
+    color: var(--text-tertiary);
+    font-size: var(--text-12);
     line-height: 1.55;
   }
 
   div.side-empty {
-    padding: 8px 4px;
+    padding: var(--space-2) var(--space-2);
   }
 
   .side-empty p {
     margin: 0 0 5px;
   }
 
-  .empty-state {
-    display: flex;
-    min-height: 300px;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    padding: 34px 20px;
-    text-align: center;
-  }
-
-  .empty-state.compact {
-    min-height: 240px;
-  }
-
-  .empty-icon {
-    display: grid;
-    width: 42px;
-    height: 42px;
-    place-items: center;
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
-    border: 1px solid var(--accent-border, rgba(67, 209, 127, 0.26));
-    border-radius: 11px;
-  }
-
-  .empty-state h3 {
-    margin: 13px 0 4px;
-    font-size: 13px;
-    font-weight: 620;
-  }
-
-  .empty-state p {
-    max-width: 330px;
-    margin: 0 0 15px;
-    color: var(--text-muted, #75847b);
-    font-size: 10.5px;
-    line-height: 1.55;
-  }
-
-  .project-skeletons,
-  .side-skeleton {
-    display: grid;
-    gap: 9px;
-  }
-
-  .project-skeletons i,
-  .side-skeleton i {
-    display: block;
-    background: linear-gradient(
-      90deg,
-      var(--surface-2, #101713),
-      var(--surface-raised, #141d18),
-      var(--surface-2, #101713)
-    );
-    background-size: 200% 100%;
-    border-radius: 9px;
-    animation: shimmer 1.4s linear infinite;
-  }
-
-  .project-skeletons i {
-    height: 150px;
-  }
-
-  .side-skeleton i {
-    height: 43px;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  @keyframes shimmer {
-    to {
-      background-position: -200% 0;
-    }
-  }
-
-  @media (max-width: 1040px) {
-    .work-layout {
-      grid-template-columns: minmax(0, 1fr) 255px;
-    }
-  }
-
-  @media (max-width: 860px) {
-    .work-layout {
-      grid-template-columns: 1fr;
-    }
-
-    .side-stack {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
   @media (max-width: 700px) {
-    .summary-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .summary-card {
-      min-height: 88px;
-    }
-
-    .work-toolbar {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .search-field {
-      width: 100%;
-    }
-
-    .toolbar-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1.25fr;
-    }
-
-    .milestone-grid,
-    .side-stack {
-      grid-template-columns: 1fr;
-    }
-
     .invoice-main {
       grid-template-columns: 28px minmax(0, 1fr) auto;
     }
@@ -2007,23 +1416,11 @@
       min-width: 0;
       align-items: center;
       flex-direction: row;
-      gap: 7px;
+      gap: var(--space-2);
     }
   }
 
   @media (max-width: 460px) {
-    .toolbar-actions {
-      grid-template-columns: 1fr;
-    }
-
-    .project-heading {
-      gap: 10px;
-    }
-
-    .project-value strong {
-      font-size: 10.5px;
-    }
-
     .mini-work-entry {
       grid-template-columns: 18px minmax(0, 1fr) auto;
     }
@@ -2042,13 +1439,6 @@
 
     .invoice-payments time {
       display: none;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .project-skeletons i,
-    .side-skeleton i {
-      animation: none;
     }
   }
 </style>
