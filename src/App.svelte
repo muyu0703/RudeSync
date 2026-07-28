@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
+  import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
   import { fade, scale } from "svelte/transition";
   import Card from "./lib/components/Card.svelte";
@@ -722,7 +723,13 @@
                     <span>Overdue</span><b>{overdueTasks.length}</b>
                   </div>
                   {#each overdueTasks as task (task.id)}
-                    <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                    <div
+                      class="task-row-outro"
+                      out:fade={{ duration: motionDuration(180) }}
+                      animate:flip={{ duration: motionDuration(180) }}
+                    >
+                      <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                    </div>
                   {/each}
                 {/if}
                 {#if todayTasks.length}
@@ -730,7 +737,13 @@
                     <span>Today</span><b>{todayTasks.length}</b>
                   </div>
                   {#each todayTasks as task (task.id)}
-                    <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                    <div
+                      class="task-row-outro"
+                      out:fade={{ duration: motionDuration(180) }}
+                      animate:flip={{ duration: motionDuration(180) }}
+                    >
+                      <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                    </div>
                   {/each}
                 {/if}
               </div>
@@ -800,7 +813,10 @@
             {#if nextSevenTasks.length}
               <div class="upcoming-strip">
                 {#each nextSevenTasks.slice(0, 4) as task (task.id)}
-                  <article>
+                  <article
+                    out:fade={{ duration: motionDuration(180) }}
+                    animate:flip={{ duration: motionDuration(180) }}
+                  >
                     <span class="upcoming-date">{displayDate(task.plannedDate ?? task.dueDate ?? "")}</span>
                     <strong>{task.title}</strong><span>{task.category ?? "Uncategorized"}</span>
                   </article>
@@ -847,7 +863,13 @@
             {:else if filteredTasks.length}
               <div class="task-list roomy">
                 {#each filteredTasks as task (task.id)}
-                  <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                  <div
+                    class="task-row-outro"
+                    out:fade={{ duration: motionDuration(180) }}
+                    animate:flip={{ duration: motionDuration(180) }}
+                  >
+                    <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                  </div>
                 {/each}
               </div>
             {:else}
