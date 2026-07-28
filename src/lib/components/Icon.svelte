@@ -26,7 +26,8 @@
     | "keyboard"
     | "circle"
     | "x"
-    | "briefcase";
+    | "briefcase"
+    | "edit";
   export let size = 18;
   export let strokeWidth = 1.8;
 </script>
@@ -116,6 +117,9 @@
     <circle cx="12" cy="12" r="8.5" />
   {:else if name === "x"}
     <path d="m6 6 12 12M18 6 6 18" />
+  {:else if name === "edit"}
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
   {/if}
 </svg>
 

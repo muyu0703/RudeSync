@@ -77,10 +77,7 @@
       title={`Edit ${task.title}`}
       on:click={() => onOpen?.(task)}
     >
-      <svg class="edit-glyph" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-      </svg>
+      <Icon name="edit" size={16} />
     </button>
   {:else}
     <span class="row-action-placeholder" aria-hidden="true"></span>
@@ -181,5 +178,4 @@
   .task-row:hover .row-action,
   .row-action:focus-visible { opacity: 1; }
   .row-action:hover { color: var(--text-primary); background: var(--surface-active); }
-  .edit-glyph { display: block; flex: 0 0 auto; }
 </style>
