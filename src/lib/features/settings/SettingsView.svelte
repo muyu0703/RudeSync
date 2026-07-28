@@ -251,6 +251,19 @@
   aria-label="RudeSync settings"
   aria-busy={loading}
 >
+  <div class="intro-header">
+    <SectionHeader
+      title="Make RudeSync yours."
+      subtext="Set up invoices, daily behavior, and backups. Your working data stays on this device."
+    >
+      <svelte:fragment slot="actions">
+        <span class="status-pill" title="RudeSync works without a cloud connection">
+          Local-first · {service.isDesktop ? "Desktop database" : "Browser preview storage"}
+        </span>
+      </svelte:fragment>
+    </SectionHeader>
+  </div>
+
   {#if !loading && backupWarning}
     <div class="message warning" role="status">
       <Icon name="database" size={14} />
@@ -635,6 +648,10 @@
   .settings-view {
     width: min(100%, 1000px);
     margin: 0 auto;
+  }
+
+  .intro-header {
+    margin-bottom: var(--space-4);
   }
 
   .message {
