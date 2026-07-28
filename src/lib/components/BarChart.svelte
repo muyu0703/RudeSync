@@ -237,14 +237,19 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
+  /* Each tick centres on its own gridline. space-between already puts the first
+     box at the top of the value range and the last at the bottom, and the
+     middle one dead centre -- so the outer two move OUT by half their own
+     height. Nudging them inward instead leaves the zero tick floating well
+     above the baseline the bars actually stand on. */
   .y-axis span {
-    transform: translateY(-50%);
-  }
-  .y-axis span:first-child {
     transform: translateY(0);
   }
+  .y-axis span:first-child {
+    transform: translateY(-50%);
+  }
   .y-axis span:last-child {
-    transform: translateY(-100%);
+    transform: translateY(50%);
   }
 
   /* Reserved headroom so the one direct label and the tooltip sit above the

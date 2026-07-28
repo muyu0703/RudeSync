@@ -184,7 +184,12 @@
   // Both charts bucket by local day via the same resolver `completedToday` and
   // `completedThisWeek` use, so a bar can never contradict the meter beside it.
   $: completionTrend = completionsByDay(tasks, todayIso, 14, localDayFromTimestamp);
-  $: reviewTrend = completionsByDay(tasks, todayIso, 7, localDayFromTimestamp);
+  // Anchored to the review week, not a trailing 7 days. A trailing window
+  // reaches back past the week boundary, so just after a week rolls over the
+  // chart shows last week's completions beside a "0 done this week" card and
+  // the page appears to contradict itself. Every figure on Review describes
+  // the same Mon-Sun week; later days simply sit empty until they happen.
+  $: reviewTrend = completionsByDay(tasks, weekEndIso, 7, localDayFromTimestamp);
   $: filteredTasks = tasks
     .filter((task) => {
       if (taskFilter === "today") return todayTasks.some((item) => item.id === task.id);
@@ -991,13 +996,13 @@
             <SectionHeader
               slot="header"
               title="Daily rhythm"
-              subtext="Tasks finished each day, last 7 days"
+              subtext="Tasks finished each day this week"
             />
             <BarChart
               points={reviewTrend}
               valueLabel="Completed"
-              tableCaption="Tasks completed each day over the last 7 days"
-              emptyMessage="No tasks completed in the last 7 days yet."
+              tableCaption="Tasks completed each day this week"
+              emptyMessage="Nothing completed this week yet."
               loading={loading}
             />
           </Card>
