@@ -126,6 +126,45 @@ fn update_client_in_connection(
     load_client(connection, &id, false)
 }
 
+#[tauri::command]
+pub(crate) fn delete_client(database: State<'_, Database>, id: String) -> Result<(), AppError> {
+    let connection = database.lock()?;
+    delete_client_in_connection(&connection, &id)
+}
+
+/// Refuses when the client still has an active project. Every invoice is
+/// created against a project (`project_id` is required, never optional), so
+/// a client with no active projects cannot have any active invoices either —
+/// checking projects here is sufficient to protect financial history.
+fn delete_client_in_connection(connection: &Connection, id: &str) -> Result<(), AppError> {
+    let id = required_trimmed(id.to_owned(), "Client ID", 64)?;
+
+    let has_projects: bool = connection.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM projects WHERE client_id = ?1 AND deleted_at IS NULL
+        )",
+        params![id],
+        |row| row.get(0),
+    )?;
+    if has_projects {
+        return Err(AppError::InvalidInput(
+            "This client still has active projects and cannot be deleted. Delete or reassign its projects first.".into(),
+        ));
+    }
+
+    let now = utc_now();
+    let changed = connection.execute(
+        "UPDATE clients
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE id = ?1 AND deleted_at IS NULL",
+        params![id, now],
+    )?;
+    if changed == 0 {
+        return Err(AppError::NotFound("Client not found.".into()));
+    }
+    Ok(())
+}
+
 struct ValidatedClient {
     name: String,
     company_name: Option<String>,
@@ -440,6 +479,64 @@ fn update_project_in_connection(
     load_project(connection, &id, false)
 }
 
+#[tauri::command]
+pub(crate) fn delete_project(database: State<'_, Database>, id: String) -> Result<(), AppError> {
+    let mut connection = database.lock()?;
+    delete_project_atomic(&mut connection, &id)
+}
+
+/// Refuses when the project still has an active (non-void, non-deleted)
+/// invoice — deleting the project must never silently orphan financial
+/// history. A voided invoice is already discarded financial history (and
+/// keeps its own name/client snapshot independent of the live project row),
+/// so it does not block deletion. If nothing blocks it, the project is
+/// soft-deleted along with its milestones, which are meaningless without it.
+fn delete_project_atomic(connection: &mut Connection, id: &str) -> Result<(), AppError> {
+    let id = required_trimmed(id.to_owned(), "Project ID", 64)?;
+    let transaction = connection.transaction()?;
+
+    let exists: bool = transaction.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM projects WHERE id = ?1 AND deleted_at IS NULL
+        )",
+        params![id],
+        |row| row.get(0),
+    )?;
+    if !exists {
+        return Err(AppError::NotFound("Project not found.".into()));
+    }
+
+    let has_active_invoices: bool = transaction.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM invoices
+            WHERE project_id = ?1 AND deleted_at IS NULL AND status <> 'void'
+        )",
+        params![id],
+        |row| row.get(0),
+    )?;
+    if has_active_invoices {
+        return Err(AppError::InvalidInput(
+            "This project has invoices and cannot be deleted. Void its issued invoices or discard its drafts first.".into(),
+        ));
+    }
+
+    let now = utc_now();
+    transaction.execute(
+        "UPDATE projects
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE id = ?1 AND deleted_at IS NULL",
+        params![id, now],
+    )?;
+    transaction.execute(
+        "UPDATE project_milestones
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE project_id = ?1 AND deleted_at IS NULL",
+        params![id, now],
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
 struct ValidatedProject {
     client_id: Option<String>,
     name: String,
@@ -724,6 +821,28 @@ pub(crate) fn update_work_entry(
         return Err(AppError::NotFound("Work entry not found.".into()));
     }
     load_work_entry(&connection, &id, false)
+}
+
+#[tauri::command]
+pub(crate) fn delete_work_entry(database: State<'_, Database>, id: String) -> Result<(), AppError> {
+    let connection = database.lock()?;
+    delete_work_entry_in_connection(&connection, &id)
+}
+
+/// Nothing depends on a work entry, so this is a plain soft-delete.
+fn delete_work_entry_in_connection(connection: &Connection, id: &str) -> Result<(), AppError> {
+    let id = required_trimmed(id.to_owned(), "Work entry ID", 64)?;
+    let now = utc_now();
+    let changed = connection.execute(
+        "UPDATE work_entries
+         SET deleted_at = ?2, updated_at = ?2
+         WHERE id = ?1 AND deleted_at IS NULL",
+        params![id, now],
+    )?;
+    if changed == 0 {
+        return Err(AppError::NotFound("Work entry not found.".into()));
+    }
+    Ok(())
 }
 
 struct ValidatedWorkEntry {
@@ -1599,5 +1718,309 @@ mod tests {
             reloaded.milestones[0].status, "not-invoiced",
             "an invoice belonging to a different project must not mark this milestone as invoiced"
         );
+    }
+
+    // -----------------------------------------------------------------
+    // delete_client / delete_project / delete_work_entry
+
+    fn delete_test_connection() -> Connection {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE clients (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    company_name TEXT,
+                    email TEXT,
+                    billing_address TEXT,
+                    currency TEXT NOT NULL,
+                    notes TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE projects (
+                    id TEXT PRIMARY KEY,
+                    client_id TEXT,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    urls_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL,
+                    currency TEXT NOT NULL,
+                    quoted_total_minor INTEGER NOT NULL,
+                    kickoff_percent_basis_points INTEGER NOT NULL,
+                    kickoff_label TEXT NOT NULL,
+                    completion_percent_basis_points INTEGER NOT NULL,
+                    completion_label TEXT NOT NULL,
+                    start_date TEXT,
+                    due_date TEXT,
+                    completed_at TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE project_milestones (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    amount_minor INTEGER NOT NULL DEFAULT 0,
+                    kind TEXT NOT NULL DEFAULT 'custom',
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE invoices (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    milestone_id TEXT,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );
+                CREATE TABLE work_entries (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT,
+                    title TEXT NOT NULL,
+                    details TEXT,
+                    work_date TEXT NOT NULL,
+                    urls_json TEXT NOT NULL DEFAULT '[]',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    deleted_at TEXT
+                );",
+            )
+            .unwrap();
+        connection
+    }
+
+    fn insert_client(connection: &Connection, id: &str) {
+        connection
+            .execute(
+                "INSERT INTO clients (
+                    id, name, company_name, email, billing_address, currency,
+                    notes, created_at, updated_at, deleted_at
+                ) VALUES (?1, 'Test Client', NULL, NULL, NULL, 'USD', NULL,
+                          '2026-07-23T00:00:00Z', '2026-07-23T00:00:00Z', NULL)",
+                params![id],
+            )
+            .unwrap();
+    }
+
+    fn insert_project(connection: &Connection, id: &str, client_id: Option<&str>) {
+        connection
+            .execute(
+                "INSERT INTO projects (
+                    id, client_id, name, description, urls_json, status, currency,
+                    quoted_total_minor, kickoff_percent_basis_points, kickoff_label,
+                    completion_percent_basis_points, completion_label, start_date,
+                    due_date, completed_at, created_at, updated_at, deleted_at
+                ) VALUES (
+                    ?1, ?2, 'Test Project', NULL, '[]', 'active', 'USD', 100000,
+                    5000, 'Kickoff', 5000, 'Completion', NULL, NULL, NULL,
+                    '2026-07-23T00:00:00Z', '2026-07-23T00:00:00Z', NULL
+                )",
+                params![id, client_id],
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn deleting_work_entry_soft_deletes_it_and_is_idempotently_not_found() {
+        let connection = delete_test_connection();
+        connection
+            .execute(
+                "INSERT INTO work_entries (
+                    id, project_id, title, details, work_date, urls_json,
+                    created_at, updated_at, deleted_at
+                ) VALUES ('entry-1', NULL, 'Did the thing', NULL, '2026-07-23',
+                          '[]', '2026-07-23T00:00:00Z', '2026-07-23T00:00:00Z', NULL)",
+                [],
+            )
+            .unwrap();
+
+        delete_work_entry_in_connection(&connection, "entry-1").unwrap();
+
+        let deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM work_entries WHERE id = 'entry-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(deleted_at.is_some());
+
+        let result = delete_work_entry_in_connection(&connection, "entry-1");
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[test]
+    fn deleting_unknown_work_entry_returns_not_found() {
+        let connection = delete_test_connection();
+        let result = delete_work_entry_in_connection(&connection, "does-not-exist");
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[test]
+    fn deleting_project_without_invoices_cascades_to_its_milestones() {
+        let mut connection = delete_test_connection();
+        insert_project(&connection, "project-1", None);
+        connection
+            .execute(
+                "INSERT INTO project_milestones (
+                    id, project_id, label, amount_minor, kind, sort_order,
+                    created_at, updated_at, deleted_at
+                ) VALUES ('milestone-1', 'project-1', 'Kickoff', 50000, 'kickoff', 0,
+                          '2026-07-23T00:00:00Z', '2026-07-23T00:00:00Z', NULL)",
+                [],
+            )
+            .unwrap();
+
+        delete_project_atomic(&mut connection, "project-1").unwrap();
+
+        let project_deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM projects WHERE id = 'project-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(project_deleted_at.is_some());
+
+        let milestone_deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM project_milestones WHERE id = 'milestone-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(milestone_deleted_at.is_some());
+    }
+
+    #[test]
+    fn deleting_project_with_an_active_invoice_is_refused() {
+        let mut connection = delete_test_connection();
+        insert_project(&connection, "project-1", None);
+        connection
+            .execute(
+                "INSERT INTO invoices (id, project_id, milestone_id, status, created_at, deleted_at)
+                 VALUES ('invoice-1', 'project-1', NULL, 'issued', '2026-07-23T00:00:00Z', NULL)",
+                [],
+            )
+            .unwrap();
+
+        let result = delete_project_atomic(&mut connection, "project-1");
+        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+
+        let project_deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM projects WHERE id = 'project-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(
+            project_deleted_at.is_none(),
+            "a refused delete must not soft-delete the project"
+        );
+    }
+
+    #[test]
+    fn deleting_project_whose_only_invoices_are_voided_succeeds() {
+        // A voided invoice is already-discarded financial history that keeps
+        // its own name/client snapshot, so it must not block the project
+        // from being deleted the way a live invoice does.
+        let mut connection = delete_test_connection();
+        insert_project(&connection, "project-1", None);
+        connection
+            .execute(
+                "INSERT INTO invoices (id, project_id, milestone_id, status, created_at, deleted_at)
+                 VALUES ('invoice-1', 'project-1', NULL, 'void', '2026-07-23T00:00:00Z', NULL)",
+                [],
+            )
+            .unwrap();
+
+        delete_project_atomic(&mut connection, "project-1").unwrap();
+
+        let project_deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM projects WHERE id = 'project-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(project_deleted_at.is_some());
+    }
+
+    #[test]
+    fn deleting_unknown_project_returns_not_found() {
+        let mut connection = delete_test_connection();
+        let result = delete_project_atomic(&mut connection, "does-not-exist");
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[test]
+    fn deleting_client_without_projects_soft_deletes_it() {
+        let connection = delete_test_connection();
+        insert_client(&connection, "client-1");
+
+        delete_client_in_connection(&connection, "client-1").unwrap();
+
+        let deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM clients WHERE id = 'client-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(deleted_at.is_some());
+    }
+
+    #[test]
+    fn deleting_client_with_an_active_project_is_refused() {
+        let connection = delete_test_connection();
+        insert_client(&connection, "client-1");
+        insert_project(&connection, "project-1", Some("client-1"));
+
+        let result = delete_client_in_connection(&connection, "client-1");
+        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+
+        let deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM clients WHERE id = 'client-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(
+            deleted_at.is_none(),
+            "a refused delete must not soft-delete the client"
+        );
+    }
+
+    #[test]
+    fn deleting_client_with_only_deleted_projects_succeeds() {
+        let mut connection = delete_test_connection();
+        insert_client(&connection, "client-1");
+        insert_project(&connection, "project-1", Some("client-1"));
+        delete_project_atomic(&mut connection, "project-1").unwrap();
+
+        delete_client_in_connection(&connection, "client-1").unwrap();
+
+        let deleted_at: Option<String> = connection
+            .query_row(
+                "SELECT deleted_at FROM clients WHERE id = 'client-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(deleted_at.is_some());
+    }
+
+    #[test]
+    fn deleting_unknown_client_returns_not_found() {
+        let connection = delete_test_connection();
+        let result = delete_client_in_connection(&connection, "does-not-exist");
+        assert!(matches!(result, Err(AppError::NotFound(_))));
     }
 }
