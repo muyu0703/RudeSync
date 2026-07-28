@@ -105,10 +105,13 @@ export interface WorkService {
   listClients(): Promise<Client[]>;
   createClient(input: CreateClientInput): Promise<Client>;
   updateClient(id: string, input: UpdateClientInput): Promise<Client>;
+  deleteClient(id: string): Promise<void>;
   listProjects(): Promise<Project[]>;
   createProject(input: CreateProjectInput): Promise<Project>;
   updateProject(id: string, input: UpdateProjectInput): Promise<Project>;
+  deleteProject(id: string): Promise<void>;
   listWorkEntries(): Promise<WorkEntry[]>;
   createWorkEntry(input: CreateWorkEntryInput): Promise<WorkEntry>;
   updateWorkEntry(id: string, input: UpdateWorkEntryInput): Promise<WorkEntry>;
+  deleteWorkEntry(id: string): Promise<void>;
 }

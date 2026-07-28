@@ -11,6 +11,12 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "rudesync.work.v1";
+// The money feature keeps its own browser-only store under this key. Reading
+// it directly (rather than importing moneyService) mirrors how moneyService
+// already reads this module's WORK_STORAGE_KEY to resolve client details —
+// it keeps the two browser-fallback stores decoupled while still letting
+// deleteProject enforce the same "no active invoices" rule the backend does.
+const MONEY_STORAGE_KEY = "rudesync.money.v1";
 
 type Invoke = <T>(
   command: string,
@@ -36,12 +42,15 @@ export const WORK_COMMANDS = Object.freeze({
   listClients: "list_clients",
   createClient: "create_client",
   updateClient: "update_client",
+  deleteClient: "delete_client",
   listProjects: "list_projects",
   createProject: "create_project",
   updateProject: "update_project",
+  deleteProject: "delete_project",
   listWorkEntries: "list_work_entries",
   createWorkEntry: "create_work_entry",
   updateWorkEntry: "update_work_entry",
+  deleteWorkEntry: "delete_work_entry",
 });
 
 function valueFrom(
@@ -77,6 +86,31 @@ function localIsoDay(date = new Date()): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+// Every invoice is created against a project (never optional), so a project
+// with no active invoice cannot have an active client-level invoice either.
+// A voided invoice is already-discarded financial history that keeps its own
+// snapshot, so it does not block deletion — only draft/issued/paid/etc. do.
+function projectHasActiveInvoices(projectId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(MONEY_STORAGE_KEY);
+    const money = stored
+      ? (JSON.parse(stored) as { invoices?: unknown[] })
+      : {};
+    return (Array.isArray(money.invoices) ? money.invoices : []).some(
+      (value) => {
+        const invoice = (value ?? {}) as Record<string, unknown>;
+        return (
+          String(valueFrom(invoice, "projectId", "project_id") ?? "") ===
+            projectId && invoice.status !== "void"
+        );
+      },
+    );
+  } catch {
+    return false;
+  }
 }
 
 function uid(prefix: string): string {
@@ -361,6 +395,19 @@ class BrowserWorkService implements WorkService {
     return client;
   }
 
+  async deleteClient(id: string): Promise<void> {
+    const state = this.read();
+    const index = state.clients.findIndex((client) => client.id === id);
+    if (index < 0) throw new Error("Client not found.");
+    if (state.projects.some((project) => project.clientId === id)) {
+      throw new Error(
+        "This client still has active projects and cannot be deleted. Delete or reassign its projects first.",
+      );
+    }
+    state.clients.splice(index, 1);
+    this.write(state);
+  }
+
   async listProjects(): Promise<Project[]> {
     return this.read().projects.sort((a, b) =>
       b.updatedAt.localeCompare(a.updatedAt),
@@ -431,6 +478,19 @@ class BrowserWorkService implements WorkService {
     return project;
   }
 
+  async deleteProject(id: string): Promise<void> {
+    const state = this.read();
+    const index = state.projects.findIndex((project) => project.id === id);
+    if (index < 0) throw new Error("Project not found.");
+    if (projectHasActiveInvoices(id)) {
+      throw new Error(
+        "This project has invoices and cannot be deleted. Void its issued invoices or discard its drafts first.",
+      );
+    }
+    state.projects.splice(index, 1);
+    this.write(state);
+  }
+
   async listWorkEntries(): Promise<WorkEntry[]> {
     return this.read().workEntries.sort((a, b) =>
       b.workDate.localeCompare(a.workDate),
@@ -493,6 +553,14 @@ class BrowserWorkService implements WorkService {
     this.write(state);
     return entry;
   }
+
+  async deleteWorkEntry(id: string): Promise<void> {
+    const state = this.read();
+    const index = state.workEntries.findIndex((entry) => entry.id === id);
+    if (index < 0) throw new Error("Completed-work record not found.");
+    state.workEntries.splice(index, 1);
+    this.write(state);
+  }
 }
 
 class TauriWorkService implements WorkService {
@@ -523,6 +591,10 @@ class TauriWorkService implements WorkService {
     return parseClient(row);
   }
 
+  async deleteClient(id: string): Promise<void> {
+    await this.invoke<null>(WORK_COMMANDS.deleteClient, { id });
+  }
+
   async listProjects(): Promise<Project[]> {
     const rows = await this.invoke<unknown[]>(WORK_COMMANDS.listProjects, {
       filter: { includeDeleted: false },
@@ -548,6 +620,10 @@ class TauriWorkService implements WorkService {
     return parseProject(row);
   }
 
+  async deleteProject(id: string): Promise<void> {
+    await this.invoke<null>(WORK_COMMANDS.deleteProject, { id });
+  }
+
   async listWorkEntries(): Promise<WorkEntry[]> {
     const rows = await this.invoke<unknown[]>(WORK_COMMANDS.listWorkEntries, {
       filter: { includeDeleted: false },
@@ -571,6 +647,10 @@ class TauriWorkService implements WorkService {
       input: normalizeWorkEntryInput(input),
     });
     return parseWorkEntry(row);
+  }
+
+  async deleteWorkEntry(id: string): Promise<void> {
+    await this.invoke<null>(WORK_COMMANDS.deleteWorkEntry, { id });
   }
 }
 

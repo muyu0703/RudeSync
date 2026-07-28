@@ -220,6 +220,77 @@
     }
   }
 
+  async function deleteClient(client: Client): Promise<void> {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Delete ${client.name}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    saving = true;
+    errorMessage = "";
+    try {
+      await service.deleteClient(client.id);
+      clients = clients.filter((item) => item.id !== client.id);
+      if (selectedClientId === client.id) selectedClientId = "all";
+    } catch (error) {
+      errorMessage = errorText(error, "The client could not be deleted.");
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function deleteProject(project: Project): Promise<void> {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Delete ${project.name}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    saving = true;
+    errorMessage = "";
+    try {
+      await service.deleteProject(project.id);
+      projects = projects.filter((item) => item.id !== project.id);
+    } catch (error) {
+      errorMessage = errorText(error, "The project could not be deleted.");
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function deleteWorkEntry(entry: WorkEntry): Promise<void> {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Delete "${entry.title}"? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    saving = true;
+    errorMessage = "";
+    try {
+      await service.deleteWorkEntry(entry.id);
+      workEntries = workEntries.filter((item) => item.id !== entry.id);
+      if (editingWorkEntry?.id === entry.id) {
+        dialog = null;
+        resetWorkDraft();
+      }
+    } catch (error) {
+      errorMessage = errorText(
+        error,
+        "The completed-work record could not be deleted.",
+      );
+    } finally {
+      saving = false;
+    }
+  }
+
   function openWorkDialog(
     projectId: string | null = null,
     prefill: WorkEntryPrefill | null = null,
@@ -620,6 +691,15 @@
                       <button type="button" aria-label={`Edit ${entry.title}`} on:click={() => editWorkEntry(entry)}>
                         Edit
                       </button>
+                      <button
+                        class="danger"
+                        type="button"
+                        aria-label={`Delete ${entry.title}`}
+                        disabled={saving}
+                        on:click={() => deleteWorkEntry(entry)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   {/each}
                 </div>
@@ -636,6 +716,14 @@
                   </button>
                   <button class="text-button" type="button" on:click={() => openWorkDialog(project.id)}>
                     <Icon name="plus" size={13} /> Add work
+                  </button>
+                  <button
+                    class="text-button danger"
+                    type="button"
+                    disabled={saving}
+                    on:click={() => deleteProject(project)}
+                  >
+                    <Icon name="x" size={13} /> Delete
                   </button>
                 </div>
               </footer>
@@ -718,6 +806,16 @@
                 >
                   <Icon name="edit" size={14} />
                 </button>
+                <button
+                  class="client-edit danger"
+                  type="button"
+                  aria-label={`Delete ${client.name}`}
+                  title={`Delete ${client.name}`}
+                  disabled={saving}
+                  on:click={() => deleteClient(client)}
+                >
+                  <Icon name="x" size={14} />
+                </button>
               </div>
             {/each}
           </div>
@@ -771,6 +869,16 @@
                   on:click={() => editWorkEntry(entry)}
                 >
                   <Icon name="edit" size={13} />
+                </button>
+                <button
+                  class="entry-edit danger"
+                  type="button"
+                  aria-label={`Delete ${entry.title}`}
+                  title={`Delete ${entry.title}`}
+                  disabled={saving}
+                  on:click={() => deleteWorkEntry(entry)}
+                >
+                  <Icon name="x" size={13} />
                 </button>
               </article>
             {/each}
@@ -1158,7 +1266,7 @@
 
   .mini-work-entry {
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) auto auto;
+    grid-template-columns: 18px minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: var(--space-2);
   }
@@ -1203,6 +1311,15 @@
     background: var(--accent-fill);
   }
 
+  .mini-work-entry button.danger,
+  .text-button.danger {
+    color: var(--danger);
+  }
+
+  .mini-work-entry button.danger:hover {
+    background: var(--danger-fill);
+  }
+
   .project-footer {
     display: flex;
     align-items: center;
@@ -1232,7 +1349,7 @@
 
   .client-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 28px;
+    grid-template-columns: minmax(0, 1fr) 28px 28px;
     align-items: center;
     width: 100%;
     min-height: 47px;
@@ -1280,6 +1397,12 @@
   .client-edit:focus-visible {
     color: var(--accent);
     background: var(--accent-fill);
+  }
+
+  .client-edit.danger:hover,
+  .client-edit.danger:focus-visible {
+    color: var(--danger);
+    background: var(--danger-fill);
   }
 
   .client-avatar {
@@ -1330,7 +1453,7 @@
 
   .activity-list article {
     display: grid;
-    grid-template-columns: 9px minmax(0, 1fr) 26px;
+    grid-template-columns: 9px minmax(0, 1fr) 26px 26px;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-2);
     margin: 0 var(--space-2);
@@ -1417,6 +1540,12 @@
     background: var(--accent-fill);
   }
 
+  .entry-edit.danger:hover,
+  .entry-edit.danger:focus-visible {
+    color: var(--danger);
+    background: var(--danger-fill);
+  }
+
   .side-empty {
     margin: 2px var(--space-2) var(--space-2);
     color: var(--text-secondary);
@@ -1448,7 +1577,7 @@
 
   @media (max-width: 460px) {
     .mini-work-entry {
-      grid-template-columns: 18px minmax(0, 1fr) auto;
+      grid-template-columns: 18px minmax(0, 1fr) auto auto;
     }
 
     .mini-work-entry time {
