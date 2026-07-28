@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
+  import { cubicOut } from "svelte/easing";
+  import { fade, scale } from "svelte/transition";
   import Card from "./lib/components/Card.svelte";
   import Icon from "./lib/components/Icon.svelte";
   import MeterBar from "./lib/components/MeterBar.svelte";
@@ -939,13 +941,15 @@
 </div>
 
 {#if setupPromptOpen}
-  <div class="setup-overlay" role="presentation">
+  <div class="setup-overlay" role="presentation" transition:fade={{ duration: 140 }}>
     <div
       class="setup-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="setup-title"
       aria-describedby="setup-description"
+      in:scale={{ duration: 200, start: 0.96, opacity: 0, easing: cubicOut }}
+      out:scale={{ duration: 140, start: 0.98, opacity: 0, easing: cubicOut }}
     >
       <span class="setup-mark"><Icon name="spark" size={20} /></span>
       <span class="eyebrow">One-minute setup</span>

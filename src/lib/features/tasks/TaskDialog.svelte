@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from "svelte";
+  import { cubicOut } from "svelte/easing";
+  import { fade, scale } from "svelte/transition";
   import Icon from "../../components/Icon.svelte";
   import type { Task, TaskPriority, TaskRecurrence } from "../../types";
   import type {
@@ -204,12 +206,14 @@
 <svelte:window on:keydown={(event) => open && handleKeydown(event)} />
 
 {#if open}
-  <div class="backdrop" role="presentation" on:click|self={close}>
+  <div class="backdrop" role="presentation" on:click|self={close} transition:fade={{ duration: 140 }}>
     <div
       class="dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="task-dialog-title"
+      in:scale={{ duration: 200, start: 0.96, opacity: 0, easing: cubicOut }}
+      out:scale={{ duration: 140, start: 0.98, opacity: 0, easing: cubicOut }}
     >
       <header>
         <div>

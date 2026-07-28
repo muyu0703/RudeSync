@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { cubicOut } from "svelte/easing";
+  import { fade, scale } from "svelte/transition";
 
   export let title: string;
   export let description = "";
@@ -32,8 +34,13 @@
   aria-describedby={description ? "work-dialog-description" : undefined}
   on:cancel|preventDefault={close}
   on:click={handleBackdrop}
+  transition:fade={{ duration: 140 }}
 >
-  <section class="dialog-card">
+  <section
+    class="dialog-card"
+    in:scale={{ duration: 200, start: 0.96, opacity: 0, easing: cubicOut }}
+    out:scale={{ duration: 140, start: 0.98, opacity: 0, easing: cubicOut }}
+  >
     <header>
       <div>
         <h2 id="work-dialog-title">{title}</h2>
