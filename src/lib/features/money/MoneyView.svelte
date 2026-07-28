@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
-  import { slide } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
   import { motionDuration } from "../../motion";
   import {
     calculateInvoiceDueDate,
@@ -1001,7 +1001,7 @@
       class="tab-panel"
     >
       {#if showInvoiceForm}
-        <form class="composer" on:submit|preventDefault={() => saveInvoice("issued")}>
+        <form class="composer" on:submit|preventDefault={() => saveInvoice("issued")} transition:slide={{ duration: motionDuration(180) }}>
           <div class="composer-head">
             <div>
               <span class="eyebrow">Milestone billing</span>
@@ -1101,7 +1101,7 @@
               </select>
             </label>
             {#if invoiceDiscountKind !== "none"}
-              <label transition:slide={{ duration: motionDuration(180) }}>
+              <label transition:fade={{ duration: motionDuration(180) }}>
                 <span>{invoiceDiscountKind === "fixed" ? "Discount amount" : "Discount %"}</span>
                 <input bind:value={invoiceDiscountValue} inputmode="decimal" required />
               </label>
@@ -1272,7 +1272,7 @@
       class="tab-panel"
     >
       {#if showLoanForm}
-        <form class="composer" on:submit|preventDefault={saveLoan}>
+        <form class="composer" on:submit|preventDefault={saveLoan} transition:slide={{ duration: motionDuration(180) }}>
           <div class="composer-head">
             <div><span class="eyebrow">Personal obligation</span><h3>Create loan schedule</h3></div>
             <span class="separation-chip">Never linked to clients</span>
