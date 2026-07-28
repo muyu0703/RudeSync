@@ -407,12 +407,6 @@ kbd {
    Today
    ============================================================= */
 
-.feature-panel p {
-  color: var(--text-secondary);
-  font-size: var(--text-13);
-  line-height: 1.5;
-}
-
 /* Reserved for Cycle 2. Renders as a quiet empty region, never a broken chart. */
 .chart-slot {
   height: 96px;
@@ -514,7 +508,7 @@ kbd {
   border-bottom: 1px solid var(--separator);
 }
 .panel-header.small { min-height: 44px; }
-.panel-header h3, .feature-panel h3, .rule-panel h3 {
+.panel-header h3 {
   font-size: var(--text-15);
   font-weight: var(--weight-semibold);
 }
@@ -709,71 +703,6 @@ kbd {
   margin: 0 auto var(--space-4);
 }
 
-.feature-grid, .money-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-  gap: var(--space-4);
-  max-width: 1120px;
-  margin: 0 auto;
-}
-.money-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-.feature-panel {
-  position: relative;
-  display: flex;
-  min-height: 280px;
-  align-items: flex-start;
-  flex-direction: column;
-  padding: var(--space-6);
-  overflow: hidden;
-}
-.feature-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  margin-bottom: var(--space-5);
-  place-items: center;
-  color: var(--accent);
-  border-radius: var(--radius-control);
-}
-.feature-icon.amber-icon { color: var(--amber); }
-.feature-panel h3 { margin-bottom: var(--space-2); font-size: var(--text-20); letter-spacing: -0.015em; }
-.feature-panel p { max-width: 52ch; }
-.feature-panel .primary-button { margin-top: auto; }
-.build-note { margin-top: var(--space-2); color: var(--text-tertiary); font-size: var(--text-11); }
-
-.rule-panel { padding: var(--space-6); }
-.rule-panel h3 { margin-bottom: var(--space-6); font-size: var(--text-17); }
-.milestone-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
-.milestone-row > span {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  color: var(--text-secondary);
-  font-size: var(--text-11);
-  background: var(--surface-active);
-  border-radius: 50%;
-}
-.milestone-row div { display: flex; flex-direction: column; }
-.milestone-row strong { font-size: var(--text-13); font-weight: var(--weight-medium); }
-.milestone-row small { color: var(--text-secondary); font-size: var(--text-11); }
-.milestone-row b { color: var(--text-primary); font-size: var(--text-13); }
-.milestone-line { width: 1px; height: 24px; margin-left: 12px; background: var(--separator); }
-
-.money-feature { min-height: 300px; }
-.money-feature code { color: var(--accent); font-family: var(--font-mono); font-size: var(--text-12); }
-
-.term-pills, .frequency-list { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: auto; }
-.term-pills span, .frequency-list span {
-  padding: var(--space-1) var(--space-2);
-  color: var(--text-secondary);
-  font-size: var(--text-11);
-  background: var(--surface-active);
-  border: 0;
-  border-radius: var(--radius-control);
-}
-
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); max-width: 1120px; margin: 0 auto; }
 
 /* Shared form controls. Individual forms must not restyle these. */
@@ -873,7 +802,7 @@ kbd {
   .search-trigger span, .search-trigger kbd { display: none; }
   .quick-hint { display: none; }
   .quick-add { grid-template-columns: 20px minmax(0, 1fr) auto; }
-  .feature-grid, .money-grid, .settings-grid, .review-charts { grid-template-columns: 1fr; }
+  .settings-grid, .review-charts { grid-template-columns: 1fr; }
   .upcoming-strip { grid-template-columns: 1fr; }
 }
 
