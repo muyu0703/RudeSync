@@ -669,6 +669,10 @@ kbd {
 .review-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  /* Each card keeps its natural height. Stretching the short weekly meter to
+     match the chart beside it would leave a tall, mostly-empty card, which is
+     the same "looks broken" read that got the placeholder chart slots pulled. */
+  align-items: start;
   gap: var(--space-4);
   max-width: 1120px;
   margin: 0 auto var(--space-4);
