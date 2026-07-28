@@ -1254,7 +1254,7 @@
             {/each}
           </div>
         {:else}
-          <div class="empty-state"><span>USD</span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
+          <div class="empty-state nested"><span>USD</span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
         {/if}
       </Card>
     </div>
@@ -1488,9 +1488,13 @@
   .form-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--separator); margin-top: 14px; padding-top: 13px; }
   .invoice-list { display: grid; gap: var(--space-2); }
   .loan-list { display: grid; gap: 9px; }
-  /* Same treatment as the shared Card: a surface with soft elevation, never an
-     outlined box inside an already-elevated card. */
-  .invoice-card, .loan-card { background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); }
+  /* .invoice-card rows sit inside the invoice-list Card, so they take the
+     nested-row treatment: a lighter rung on the surface ramp, tighter radius,
+     no shadow (an identically-shadowed slab against its own Card would be
+     invisible). .loan-card sits directly on --surface-window with no
+     enclosing Card, so it keeps the top-level Card treatment. */
+  .invoice-card { background: var(--surface-raised); border-radius: var(--radius-control); }
+  .loan-card { background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); }
   .invoice-main { padding: 13px 14px; }
   .invoice-identity { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px 9px; min-width: 240px; }
   .invoice-identity small { grid-column: 1 / -1; }
@@ -1513,7 +1517,9 @@
   .payment-form label.grow { flex: 1; }
   .payment-form input { min-height: 32px; padding: 6px 8px; }
   .payment-list { display: grid; gap: var(--space-2); }
-  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); background: var(--surface-content); padding: 11px 13px; font-size: 11px; }
+  /* Nested inside the earnings Card: same lighter-rung, no-shadow treatment
+     as .invoice-card above. */
+  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border-radius: var(--radius-control); background: var(--surface-raised); padding: 11px 13px; font-size: 11px; }
   .payment-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--accent); background: var(--accent-fill); }
   .payment-list div { display: flex; flex-direction: column; gap: 2px; }
   .payment-list small, .payment-list time { color: var(--text-tertiary); }
@@ -1550,7 +1556,13 @@
   .inline-date input { min-height: 28px; padding: 4px 7px; font-size: var(--text-11); }
   .check { width: 21px; height: 21px; border: 1px solid var(--separator-strong); background: var(--surface-window); border-radius: var(--radius-control); color: var(--on-accent); cursor: pointer; padding: 0; }
   .check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+  /* Default: top-level slab directly on --surface-window (invoice-tab and
+     loans-tab empty/loading states) — keeps the Card treatment. */
   .empty-state, .loading-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 55px 20px; background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); color: var(--text-secondary); }
+  /* .nested: used where the empty state renders inside an already-elevated
+     Card (the earnings tab) — same lighter-rung, no-shadow treatment as
+     .invoice-card / .payment-list article. */
+  .empty-state.nested, .loading-state.nested { background: var(--surface-raised); border-radius: var(--radius-control); box-shadow: none; }
   .empty-state > span { display: grid; place-items: center; width: 45px; height: 45px; border-radius: var(--radius-control); background: var(--accent-fill); color: var(--accent); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .empty-state h3 { color: var(--text-primary); margin: 12px 0 3px; font-size: 15px; }
   .empty-state p { max-width: 440px; margin: 0 0 14px; font-size: 11px; line-height: 1.6; }
