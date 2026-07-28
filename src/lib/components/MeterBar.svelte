@@ -34,7 +34,7 @@
     gap: var(--space-2);
     margin-bottom: var(--space-1);
   }
-  .meter-label { font-size: var(--text-12); }
+  .meter-label { font-size: var(--text-12); font-variant-numeric: tabular-nums; }
   .meter-detail {
     color: var(--text-tertiary);
     font-size: var(--text-11);

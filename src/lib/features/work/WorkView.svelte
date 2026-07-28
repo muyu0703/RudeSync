@@ -389,11 +389,11 @@
     <StatCard
       icon="invoice"
       label="Remaining to invoice"
-      value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "$0"}
+      value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "None"}
       detail={remainingTotals.length > 1
         ? remainingTotals.slice(1).map((total) => formatMoney(total.totalMinor, total.currency)).join(" · ")
         : "Across active projects"}
-      tone="warning"
+      tone={remainingTotals.length ? "warning" : "neutral"}
     />
   </StatRow>
 
@@ -813,6 +813,11 @@
 {/if}
 
 <style>
+  .work-view {
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
   .work-error {
     display: flex;
     align-items: center;
