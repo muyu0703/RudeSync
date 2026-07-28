@@ -1059,11 +1059,15 @@
     background: var(--accent-fill);
   }
 
-  .invoice-status.partially-paid,
-  .invoice-status.overdue,
-  .invoice-status.invoiced {
+  .invoice-status.partially-paid {
     color: var(--amber);
     background: var(--amber-fill);
+  }
+
+  /* Danger means overdue, on Work exactly as on Money. */
+  .invoice-status.overdue {
+    color: var(--danger);
+    background: var(--danger-fill);
   }
 
   .invoice-total {
