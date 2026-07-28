@@ -86,6 +86,28 @@ test("completedTodayCount matches the completion date only", () => {
   assert.equal(completedTodayCount(tasks, "2026-07-28"), 1);
 });
 
+test("completedTodayCount buckets by the caller's day resolver", () => {
+  // 07:00 local east of UTC carries a previous-day UTC stamp. The Today view
+  // buckets by local day, so passing its resolver must count this task --
+  // otherwise the stat card and the progress meter disagree on one screen.
+  const tasks = [
+    task({ id: "1", status: "completed", completedAt: "2026-07-27T23:00:00.000Z" }),
+  ];
+  const localDay = (timestamp: string): string =>
+    timestamp === "2026-07-27T23:00:00.000Z" ? "2026-07-28" : timestamp.slice(0, 10);
+
+  assert.equal(completedTodayCount(tasks, "2026-07-28"), 0);
+  assert.equal(completedTodayCount(tasks, "2026-07-28", localDay), 1);
+});
+
+test("completedTodayCount ignores tasks with no completion timestamp", () => {
+  const tasks = [
+    task({ id: "1", status: "completed", completedAt: null }),
+    task({ id: "2", status: "open" }),
+  ];
+  assert.equal(completedTodayCount(tasks, "2026-07-28"), 0);
+});
+
 test("overdueTaskCount ignores completed and undated tasks", () => {
   const tasks = [
     task({ id: "1", dueDate: "2026-07-20" }),

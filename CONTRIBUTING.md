@@ -95,8 +95,21 @@ routed through `motionDuration()`** from [`src/lib/motion.ts`](src/lib/motion.ts
 This matters more than it looks. Svelte 5 implements transitions through the
 Web Animations API, so the CSS `@media (prefers-reduced-motion: reduce)` rule
 does **not** reach them. A raw numeric duration silently ignores a user who has
-asked their operating system for less motion. Settings also exposes a per-device
-override (Follow system / Always on / Off).
+asked their operating system for less motion.
+
+**Motion has two gates, and they must agree.** Settings exposes a per-device
+override (Follow system / Always on / Off) that a media query cannot express,
+because a media query only sees the OS setting:
+
+- *Svelte transitions* — `motionDuration()`, as above.
+- *CSS `transition` and `animation`* — `applyMotionPreference()` mirrors the
+  choice onto `<html>` as `data-motion`, and the stylesheets key off it.
+  `"system"` removes the attribute so the media query alone decides.
+
+Both entry points (`src/main.ts` and `src/widget/main.ts`) call
+`applyMotionPreference()` before mounting. The widget is a separate webview
+that does not load `app.css`, so `widget.css` carries its own copy of the
+rules — add motion there and you must add the gate there too.
 
 ## Accessibility
 
