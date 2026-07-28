@@ -61,16 +61,16 @@ The full product rules and accepted scope are documented in
 ## Install on Windows 11
 
 The release build is a 64-bit NSIS installer named
-`RudeSync_0.1.6_x64-setup.exe`. A locally built installer is written to:
+`RudeSync_0.1.7_x64-setup.exe`. A locally built installer is written to:
 
 ```text
-src-tauri\target\release\bundle\nsis\RudeSync_0.1.6_x64-setup.exe
+src-tauri\target\release\bundle\nsis\RudeSync_0.1.7_x64-setup.exe
 ```
 
 To install:
 
 1. Close any older RudeSync instance from its tray icon.
-2. Run `RudeSync_0.1.6_x64-setup.exe`.
+2. Run `RudeSync_0.1.7_x64-setup.exe`.
 3. Complete the installer, then open RudeSync from the Start menu.
 4. Open **Settings** and configure your invoice profile, backup folder,
    startup preference, and notification preference.
