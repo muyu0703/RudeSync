@@ -113,6 +113,7 @@
   let pendingWorkPrefill: WorkEntryPrefill | null = null;
   let workDialogOpen = false;
   let settingsHasChanges = false;
+  let moneyHasChanges = false;
 
   $: openTasks = tasks.filter((task) => task.status === "open");
   $: completedTasks = tasks.filter((task) => task.status === "completed");
@@ -437,6 +438,14 @@
     ) {
       return;
     }
+    if (
+      active === "money" &&
+      section !== "money" &&
+      moneyHasChanges &&
+      !window.confirm("Discard your unsaved money changes?")
+    ) {
+      return;
+    }
     active = section;
     if (section !== "settings") void refreshBackupHealth();
     if (section === "today") tick().then(() => quickInput?.focus());
@@ -603,7 +612,7 @@
     const next = sectionByKey[event.key];
     if (next) {
       event.preventDefault();
-      active = next;
+      selectSection(next);
     }
   }
 
@@ -912,7 +921,7 @@
           on:prefillHandled={() => (pendingWorkPrefill = null)}
         />
       {:else if active === "money"}
-        <MoneyView on:exportInvoice={handleInvoiceExport} />
+        <MoneyView on:exportInvoice={handleInvoiceExport} bind:hasChanges={moneyHasChanges} />
       {:else if active === "review"}
         <StatRow>
           <StatCard

@@ -58,6 +58,11 @@
   }>();
   let today = moneyDateUtils.localIsoDay();
 
+  // Mirrors SettingsView's `hasChanges` contract: App.svelte consults this
+  // before navigating away from Money, exactly like it already does for
+  // Settings, instead of inventing a second unsaved-work mechanism.
+  export let hasChanges = false;
+
   let activeTab: MoneyTab = "invoices";
   let loading = true;
   let saving = false;
@@ -89,6 +94,11 @@
   let invoiceNotes = "";
   let invoiceInstructions = "";
   let invoiceLines: DraftLine[] = [blankLine()];
+  // Snapshot of the invoice draft's fields taken when the composer opens (or
+  // switches to editing a different draft), so dirtiness is judged against
+  // what the composer actually started with — including the defaults
+  // openInvoiceComposer/editDraftInvoice apply — not a blank slate.
+  let invoiceDraftSnapshot = "";
 
   let paymentInvoiceId: string | null = null;
   let paymentAmount = "";
@@ -105,6 +115,9 @@
   let loanDayTwo = loanDayOne === 28 ? 13 : 28;
   let loanScheduleDates: string[] = [];
   let loanPreviewSignature = "";
+  // Same snapshot contract as invoiceDraftSnapshot, taken when the loan
+  // composer opens.
+  let loanDraftSnapshot = "";
   let busyInstallments = new Set<string>();
   let pendingPaidInstallmentId: string | null = null;
   let pendingPaidDate = today;
@@ -125,6 +138,7 @@
   $: scheduleIsStale =
     loanScheduleDates.length > 0 &&
     loanPreviewSignature !== currentLoanSignature();
+  $: hasChanges = isComposerDirty();
   $: moneyOutstanding = outstandingByCurrency(invoices);
   $: moneyReceived = receivedInMonth(invoices, today);
   $: overdueInvoices = overdueInvoiceCount(invoices, today);
@@ -157,6 +171,90 @@
       return crypto.randomUUID();
     }
     return `draft-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function invoiceDraftSignature(): string {
+    return JSON.stringify({
+      invoiceProjectId,
+      invoiceMilestoneId,
+      invoiceIssueDate,
+      invoiceTerm,
+      invoiceCustomDueDate,
+      invoiceDiscountKind,
+      invoiceDiscountValue,
+      invoiceTax,
+      invoiceNotes,
+      invoiceInstructions,
+      invoiceLines,
+    });
+  }
+
+  function snapshotInvoiceDraft(): void {
+    invoiceDraftSnapshot = invoiceDraftSignature();
+  }
+
+  function invoiceComposerIsDirty(): boolean {
+    return invoiceDraftSignature() !== invoiceDraftSnapshot;
+  }
+
+  function loanDraftSignature(): string {
+    return JSON.stringify({
+      loanOperator,
+      loanDescription,
+      loanDate,
+      loanFirstPayment,
+      loanCount,
+      loanFrequency,
+      loanDayOne,
+      loanDayTwo,
+      loanScheduleDates,
+    });
+  }
+
+  function snapshotLoanDraft(): void {
+    loanDraftSnapshot = loanDraftSignature();
+  }
+
+  function loanComposerIsDirty(): boolean {
+    return loanDraftSignature() !== loanDraftSnapshot;
+  }
+
+  // Untouched composers close without a prompt: dirtiness is judged against
+  // the snapshot taken when each composer opened, not against a blank slate.
+  function isComposerDirty(): boolean {
+    if (showInvoiceForm) return invoiceComposerIsDirty();
+    if (showLoanForm) return loanComposerIsDirty();
+    return false;
+  }
+
+  // Shared by the composer's own Cancel button and the tab/section-navigation
+  // guards below, so every path that can discard a draft uses identical
+  // wording.
+  function composerDiscardMessage(): string {
+    if (showInvoiceForm) {
+      return "Discard this invoice draft? What you've typed will be lost.";
+    }
+    if (showLoanForm) {
+      return "Discard this loan schedule? What you've typed will be lost.";
+    }
+    return "";
+  }
+
+  // Money's own tabs aren't a full navigation (MoneyView stays mounted), but
+  // switching away hides whichever composer is open just as surely as
+  // leaving the section does, so it gets the same discard confirmation.
+  function switchTab(tab: MoneyTab): void {
+    if (tab === activeTab) return;
+    if (isComposerDirty()) {
+      if (!window.confirm(composerDiscardMessage())) return;
+      if (showInvoiceForm) {
+        showInvoiceForm = false;
+        resetInvoiceForm();
+      } else if (showLoanForm) {
+        showLoanForm = false;
+      }
+    }
+    activeTab = tab;
   }
 
   function parseMinorUnits(value: string, label: string): number {
@@ -331,6 +429,7 @@
       invoiceProjectId = projects[0].id;
       applyProjectDefaults();
     }
+    snapshotInvoiceDraft();
     void focusComposer();
   }
 
@@ -363,6 +462,7 @@
     }));
     showInvoiceForm = true;
     showLoanForm = false;
+    snapshotInvoiceDraft();
     void focusComposer();
   }
 
@@ -521,6 +621,22 @@
       block: "start",
     });
     composerFirstFieldEl?.focus();
+  }
+
+  // The composer's own Cancel is the primary (and, unlike the dialog-based
+  // editors elsewhere, only) dismiss path for this inline form, so unlike
+  // TaskDialog/WorkDialog's Cancel (a deliberate no-questions exit backed by
+  // a separate backdrop/Escape confirmation) it carries the confirmation
+  // itself. An untouched composer still closes without a prompt.
+  function cancelInvoiceComposer(): void {
+    if (
+      invoiceComposerIsDirty() &&
+      !window.confirm(composerDiscardMessage())
+    ) {
+      return;
+    }
+    showInvoiceForm = false;
+    resetInvoiceForm();
   }
 
   function resetInvoiceForm(): void {
@@ -782,6 +898,19 @@
     }
   }
 
+  function openLoanComposer(): void {
+    showLoanForm = true;
+    showInvoiceForm = false;
+    snapshotLoanDraft();
+  }
+
+  function cancelLoanComposer(): void {
+    if (loanComposerIsDirty() && !window.confirm(composerDiscardMessage())) {
+      return;
+    }
+    showLoanForm = false;
+  }
+
   function resetLoanForm(): void {
     loanOperator = "";
     loanDescription = "";
@@ -991,7 +1120,7 @@
       aria-controls="money-panel-invoices"
       class:active={activeTab === "invoices"}
       type="button"
-      on:click={() => (activeTab = "invoices")}
+      on:click={() => switchTab("invoices")}
     >Invoices <span class="soft-badge">{invoices.length}</span></button>
     <button
       id="money-tab-earnings"
@@ -1000,7 +1129,7 @@
       aria-controls="money-panel-earnings"
       class:active={activeTab === "earnings"}
       type="button"
-      on:click={() => (activeTab = "earnings")}
+      on:click={() => switchTab("earnings")}
     >Earnings <span class="soft-badge">{paymentRows.length}</span></button>
     <button
       id="money-tab-loans"
@@ -1009,7 +1138,7 @@
       aria-controls="money-panel-loans"
       class:active={activeTab === "loans"}
       type="button"
-      on:click={() => (activeTab = "loans")}
+      on:click={() => switchTab("loans")}
     >Personal loans <span class="soft-badge">{loans.length}</span></button>
   </div>
 
@@ -1170,10 +1299,7 @@
             <button
               class="secondary-button"
               type="button"
-              on:click={() => {
-                showInvoiceForm = false;
-                resetInvoiceForm();
-              }}
+              on:click={cancelInvoiceComposer}
             >Cancel</button>
             <button
               class="secondary-button"
@@ -1318,10 +1444,7 @@
         <button
           class="primary-button"
           type="button"
-          on:click={() => {
-            showLoanForm = true;
-            showInvoiceForm = false;
-          }}
+          on:click={openLoanComposer}
         >
           <Icon name="loan" size={15} /> New personal loan
         </button>
@@ -1388,7 +1511,7 @@
             </div>
           {/if}
           <div class="form-actions">
-            <button class="secondary-button" type="button" on:click={() => (showLoanForm = false)}>Cancel</button>
+            <button class="secondary-button" type="button" on:click={cancelLoanComposer}>Cancel</button>
             <button class="primary-button" type="submit" disabled={saving || !loanScheduleDates.length || scheduleIsStale}>
               {saving ? "Saving…" : "Save personal loan"}
             </button>
@@ -1402,7 +1525,7 @@
         <div class="empty-state">
           <span class="empty-icon"><Icon name="loan" size={21} /></span><h3>No personal loans</h3>
           <p>Track due dates and paid status without mixing personal debt into client earnings.</p>
-          <button class="primary-button" type="button" on:click={() => (showLoanForm = true)}>Add personal loan</button>
+          <button class="primary-button" type="button" on:click={openLoanComposer}>Add personal loan</button>
         </div>
       {:else}
         <div class="loan-list">
