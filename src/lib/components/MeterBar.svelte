@@ -6,6 +6,9 @@
   export let tone: "neutral" | "positive" | "warning" | "danger" = "positive";
 
   $: percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+  // A progressbar whose max equals its min is invalid, and an empty day or week
+  // legitimately has nothing to measure. Keep the range non-degenerate.
+  $: valueMax = max > 0 ? max : 1;
 </script>
 
 <div class="meter" data-tone={tone}>
@@ -19,7 +22,8 @@
     aria-label={label}
     aria-valuenow={value}
     aria-valuemin={0}
-    aria-valuemax={max}
+    aria-valuemax={valueMax}
+    aria-valuetext={detail ?? undefined}
   >
     <i style={`width:${percent}%`}></i>
   </div>
