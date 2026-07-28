@@ -7,6 +7,7 @@
   export let title: string;
   export let description = "";
   export let wide = false;
+  export let dirty = false;
   export let onClose: () => void;
 
   let dialog: HTMLDialogElement;
@@ -19,6 +20,13 @@
   });
 
   function close(): void {
+    // Backdrop click, Escape, and the header's X all funnel through here.
+    // The form's own Cancel button calls `onClose` directly and stays a
+    // no-questions exit — only these ambient dismiss paths get a
+    // confirmation, and only when there is something to lose.
+    if (dirty && !window.confirm("Discard your changes? What you've typed will be lost.")) {
+      return;
+    }
     if (dialog.open) dialog.close();
     onClose();
   }

@@ -111,6 +111,8 @@
   let reviewInvoices: MoneyInvoice[] = [];
   let reviewLoans: MoneyLoan[] = [];
   let pendingWorkPrefill: WorkEntryPrefill | null = null;
+  let workDialogOpen = false;
+  let settingsHasChanges = false;
 
   $: openTasks = tasks.filter((task) => task.status === "open");
   $: completedTasks = tasks.filter((task) => task.status === "completed");
@@ -427,6 +429,14 @@
   }
 
   function selectSection(section: AppSection): void {
+    if (
+      active === "settings" &&
+      section !== "settings" &&
+      settingsHasChanges &&
+      !window.confirm("Discard your unsaved settings changes?")
+    ) {
+      return;
+    }
     active = section;
     if (section !== "settings") void refreshBackupHealth();
     if (section === "today") tick().then(() => quickInput?.focus());
@@ -557,6 +567,10 @@
 
   function handleShortcut(event: KeyboardEvent): void {
     if (!event.ctrlKey && !event.metaKey) return;
+    // A dialog already open owns the keyboard: don't let a shortcut
+    // re-hydrate it (Ctrl+N over an in-progress edit) or switch sections out
+    // from under it (unmounting WorkView with an open Work dialog).
+    if (taskDialogOpen || workDialogOpen) return;
     if (event.key.toLocaleLowerCase() === "n") {
       event.preventDefault();
       openTaskEditor();
@@ -888,6 +902,7 @@
       {:else if active === "work"}
         <WorkView
           workPrefill={pendingWorkPrefill}
+          bind:dialogOpen={workDialogOpen}
           on:prefillHandled={() => (pendingWorkPrefill = null)}
         />
       {:else if active === "money"}
@@ -968,7 +983,7 @@
           {/if}
         </section>
       {:else}
-        <SettingsView />
+        <SettingsView bind:hasChanges={settingsHasChanges} />
       {/if}
       </div>
       {/key}

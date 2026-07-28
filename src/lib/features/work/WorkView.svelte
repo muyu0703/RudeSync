@@ -35,6 +35,10 @@
   type DialogKind = "client" | "project" | "work" | null;
 
   export let workPrefill: WorkEntryPrefill | null = null;
+  // Lets the shell (App.svelte) know a Work dialog is open, so global
+  // keyboard shortcuts don't switch sections or otherwise act underneath it
+  // mid-edit.
+  export let dialogOpen = false;
 
   const dispatch = createEventDispatcher<{ prefillHandled: void }>();
   const service = createWorkService();
@@ -60,6 +64,8 @@
   let handledPrefillId = "";
   let searchQuery = "";
   let defaultCurrency = "USD";
+
+  $: dialogOpen = dialog !== null;
 
   $: clientsById = new Map(clients.map((client) => [client.id, client]));
   $: projectsById = new Map(projects.map((project) => [project.id, project]));

@@ -26,6 +26,12 @@
   let urlsText = entry?.urls.join("\n") ?? "";
   let validationMessage = "";
 
+  // A fresh WorkEntryForm instance is created each time the dialog opens, so
+  // this snapshot taken at construction is the form's true starting point.
+  const initialSnapshot = JSON.stringify({ projectId, title, details, workDate, urlsText });
+  $: dirty =
+    JSON.stringify({ projectId, title, details, workDate, urlsText }) !== initialSnapshot;
+
   function urlsFromText(): string[] {
     return urlsText
       .split(/\r?\n/)
@@ -60,7 +66,7 @@
   }
 </script>
 
-<WorkDialog title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+<WorkDialog title={dialogTitle} description={dialogDescription} {dirty} onClose={onCancel}>
 <form id="work-entry-form" on:submit|preventDefault={submit}>
   <div class="field-grid project-row">
     <label>

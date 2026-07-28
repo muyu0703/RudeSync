@@ -49,6 +49,7 @@
   let titleInput: HTMLInputElement;
   let lastIdentity = "";
   let dialog: HTMLDialogElement;
+  let hydratedSnapshot = "";
 
   // The dialog stays mounted for the app's lifetime (App.svelte renders it
   // unconditionally), so — unlike WorkDialog, which is created fresh each
@@ -72,6 +73,27 @@
   } else {
     lastIdentity = "";
   }
+
+  // Compared against the snapshot `hydrate()` takes when the dialog opens
+  // (or switches to a different task), so an untouched dialog never
+  // triggers the discard confirmation below.
+  $: isDirty =
+    open &&
+    JSON.stringify({
+      title,
+      notes,
+      plannedDate,
+      dueDate,
+      reminderLocal,
+      priority,
+      category,
+      projectId,
+      recurrence,
+      weeklyDays,
+      customInterval,
+      customUnit,
+      subtaskDrafts,
+    }) !== hydratedSnapshot;
 
   function nullable(value: string): string | null {
     const normalized = value.trim();
@@ -121,6 +143,21 @@
           : "weeks";
     subtaskDrafts = [];
     validationMessage = "";
+    hydratedSnapshot = JSON.stringify({
+      title,
+      notes,
+      plannedDate,
+      dueDate,
+      reminderLocal,
+      priority,
+      category,
+      projectId,
+      recurrence,
+      weeklyDays,
+      customInterval,
+      customUnit,
+      subtaskDrafts,
+    });
   }
 
   function weekdayCode(value: string): string {
@@ -154,7 +191,19 @@
     subtaskDrafts = subtaskDrafts.filter((item) => item.id !== id);
   }
 
+  // Backdrop click, Escape (via on:cancel), and the header's icon-close
+  // button all funnel through here and get a confirmation when the form has
+  // unsaved edits. The explicit Cancel button calls `cancelClick` instead
+  // and stays a no-questions exit.
   function close(): void {
+    if (saving) return;
+    if (isDirty && !window.confirm("Discard this task? What you've typed will be lost.")) {
+      return;
+    }
+    dispatch("close");
+  }
+
+  function cancelClick(): void {
     if (!saving) dispatch("close");
   }
 
@@ -399,7 +448,7 @@
       </div>
 
       <footer>
-        <button class="cancel" type="button" on:click={close}>Cancel</button>
+        <button class="cancel" type="button" on:click={cancelClick}>Cancel</button>
         <button class="save" type="submit" form="task-dialog-form" disabled={saving || !title.trim()}>
           {saving ? "Saving…" : task ? "Save changes" : "Create task"}
         </button>

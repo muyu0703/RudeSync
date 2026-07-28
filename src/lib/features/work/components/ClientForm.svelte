@@ -17,6 +17,21 @@
   let currency = client?.currency ?? defaultCurrency;
   let notes = client?.notes ?? "";
 
+  // A fresh ClientForm instance is created each time the dialog opens (see
+  // WorkView's `{#if dialog === ...}`), so this snapshot taken at
+  // construction is the form's true starting point.
+  const initialSnapshot = JSON.stringify({
+    name,
+    companyName,
+    email,
+    billingAddress,
+    currency,
+    notes,
+  });
+  $: dirty =
+    JSON.stringify({ name, companyName, email, billingAddress, currency, notes }) !==
+    initialSnapshot;
+
   function submit(): void {
     if (!name.trim() || busy) return;
     void onSave({
@@ -30,7 +45,7 @@
   }
 </script>
 
-<WorkDialog title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+<WorkDialog title={dialogTitle} description={dialogDescription} {dirty} onClose={onCancel}>
   <form id="client-form" on:submit|preventDefault={submit}>
     <div class="field-grid two">
       <label>

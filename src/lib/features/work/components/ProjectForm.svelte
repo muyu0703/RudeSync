@@ -82,6 +82,35 @@
   let weeklyAmount = "";
   let confirmingTemplate = false;
 
+  // A fresh ProjectForm instance is created each time the dialog opens (see
+  // WorkView's `{#if dialog === ...}`), so this snapshot taken at
+  // construction is the form's true starting point. Template/UI-only state
+  // (template, weeklyWeeks, weeklyAmount, confirmingTemplate) is deliberately
+  // excluded — it never reaches `onSave`.
+  const initialSnapshot = JSON.stringify({
+    clientId,
+    name,
+    description,
+    urlsText,
+    status,
+    quotedValue,
+    startDate,
+    dueDate,
+    milestones,
+  });
+  $: dirty =
+    JSON.stringify({
+      clientId,
+      name,
+      description,
+      urlsText,
+      status,
+      quotedValue,
+      startDate,
+      dueDate,
+      milestones,
+    }) !== initialSnapshot;
+
   $: if (!clientId && clients.length) clientId = clients[0].id;
   $: selectedClient = clients.find((client) => client.id === clientId);
   $: currency =
@@ -96,6 +125,7 @@
   $: datesInvalid = Boolean(startDate && dueDate && dueDate < startDate);
   $: urls = urlsFromText();
   $: urlsInvalid = urls.some(invalidUrl);
+  $: milestoneLabelsInvalid = milestones.some((row) => !row.label.trim());
   // The project total is the sum of its milestones; `quotedValue` is only a
   // legacy reference figure that seeds the Kickoff + Completion template, so
   // it must not block submitting the form.
@@ -104,7 +134,8 @@
     !name.trim() ||
     amountMinor < 0 ||
     datesInvalid ||
-    urlsInvalid;
+    urlsInvalid ||
+    milestoneLabelsInvalid;
 
   function urlsFromText(): string[] {
     return urlsText
@@ -248,7 +279,7 @@
   }
 </script>
 
-<WorkDialog wide title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+<WorkDialog wide title={dialogTitle} description={dialogDescription} {dirty} onClose={onCancel}>
 <form id="project-form" on:submit|preventDefault={submit}>
   <div class="field-grid two">
     <label>
@@ -406,6 +437,7 @@
             bind:value={milestone.label}
             maxlength="80"
             placeholder="Milestone label"
+            aria-invalid={!milestone.label.trim()}
             required
           />
         </label>
@@ -462,6 +494,9 @@
     <button class="secondary add-milestone" type="button" on:click={addMilestone}>
       + Add milestone
     </button>
+    {#if milestoneLabelsInvalid}
+      <p class="field-error" role="alert">Give every milestone a label.</p>
+    {/if}
   </fieldset>
 
 </form>

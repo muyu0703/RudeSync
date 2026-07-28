@@ -20,6 +20,12 @@
 
   const service = createSettingsService();
 
+  // Bindable so the shell (App.svelte) can consult it before navigating away
+  // and discarding unsaved edits. Computed below, same as `settingsDirty` /
+  // `profileDirty` — this component still owns the value, App.svelte only
+  // reads it.
+  export let hasChanges = false;
+
   const MOTION_OPTIONS: [MotionPreference, string][] = [
     ["system", "Follow system"],
     ["always", "Always on"],
