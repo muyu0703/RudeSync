@@ -47,6 +47,7 @@
     onTasksChanged,
     onOpenTask,
   } from "./lib/services/taskSync.ts";
+  import { motionDuration } from "./lib/motion";
   import type { AppSection, Task } from "./lib/types";
   import type { InvoiceExportDetail } from "./lib/features/money/types";
   import {
@@ -941,15 +942,15 @@
 </div>
 
 {#if setupPromptOpen}
-  <div class="setup-overlay" role="presentation" transition:fade={{ duration: 140 }}>
+  <div class="setup-overlay" role="presentation" transition:fade={{ duration: motionDuration(140) }}>
     <div
       class="setup-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="setup-title"
       aria-describedby="setup-description"
-      in:scale={{ duration: 200, start: 0.96, opacity: 0, easing: cubicOut }}
-      out:scale={{ duration: 140, start: 0.98, opacity: 0, easing: cubicOut }}
+      in:scale={{ duration: motionDuration(200), start: 0.96, opacity: 0, easing: cubicOut }}
+      out:scale={{ duration: motionDuration(140), start: 0.98, opacity: 0, easing: cubicOut }}
     >
       <span class="setup-mark"><Icon name="spark" size={20} /></span>
       <span class="eyebrow">One-minute setup</span>
