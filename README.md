@@ -89,19 +89,107 @@ through a source you trust. In the SmartScreen window, select **More info**,
 verify that the app is RudeSync, and then select **Run anyway**. Do not bypass
 the warning for an installer from an unknown source.
 
-## Daily use
+## How to use it
 
-A practical first workflow is:
+### First run
 
-1. Add clients, then create their fixed-price projects in **Work**.
-2. Add today's tasks from **Today** or press `Ctrl+N` for the full task editor.
-3. Complete tasks and record shipped results as completed work.
-4. Create milestone invoices in **Money**, record each client payment, and
-   print or export invoices as PDF.
-5. Add your personal loan schedules and mark installments paid as they occur.
-6. Use **Review** to close the week and plan the next one.
+Open **Settings** first and fill in your invoice profile — your name, email and
+address appear on every invoice you generate, so setting them once saves
+editing them later. While you are there, choose a backup folder; RudeSync keeps
+one consistent copy per day and never touches unrelated files in it.
 
-Useful shortcuts:
+Then work outside-in: a **client** owns **projects**, a project owns
+**milestones**, and a milestone is what you actually invoice. Nothing else can
+be billed, so this order matters.
+
+### 1. Set up a client and a project
+
+In **Work**, add a client. Each client has its own currency, and RudeSync never
+adds two currencies together — a USD balance and a EUR balance stay two
+separate numbers everywhere in the app.
+
+Create a project under that client with its total fixed price, then choose how
+it bills. The milestone plan is seeded from a template and every milestone
+carries its own explicit amount:
+
+| Template | Produces |
+| --- | --- |
+| Kickoff + completion | Two milestones, an even split (odd amounts give the remainder to completion, so the parts always re-sum to the total) |
+| Even weekly | One milestone per week for the number of weeks you set |
+| Phase by phase | A milestone per phase |
+| Custom | Start empty and add your own |
+
+**Out-of-scope work is just another milestone.** When a client asks for
+something that was not in the original quote, add a milestone for it with its
+price — the project total grows to match, and the new milestone is invoiced
+like any other. You do not need to edit the original agreement or fake a line
+item.
+
+Each milestone tracks its own state — *not invoiced*, *invoiced*, *paid* — and
+the project shows what is still left to bill.
+
+### 2. Run your day
+
+**Today** is the daily surface. Type into the quick-add box for a fast capture,
+or press `Ctrl+N` for the full editor when a task needs a planned date, a
+separate deadline, a priority, a category, a project link, a reminder,
+recurrence or subtasks.
+
+Planned date and due date are deliberately different things: the planned date
+is when you intend to *do* it, the deadline is when it is *due*. A task can be
+planned for today and due next week.
+
+**Tasks** holds everything, with filters for Open, Inbox, Today, Upcoming,
+Recurring, Categories and Completed. `Ctrl+K` searches.
+
+For work that happens outside the app, use **Pop out widget** — a small
+always-on-top window that lists your open tasks over whatever you are working
+in. You can check tasks off, add new ones and toggle subtasks from it, and it
+stays in sync with the main window and remembers where you put it.
+
+As you finish real deliverables, record them as **completed work** entries
+against the project, with notes and links. These are what you review at the end
+of the week.
+
+### 3. Bill and get paid
+
+**Money** has three tabs.
+
+**Invoices** — create an invoice from a project milestone. RudeSync assigns a
+date-based number such as `INV-2026-07-23-0001`, applies your chosen payment
+terms to set the due date, and pulls in the milestone amount as a line item.
+Add more line items, a fixed or percentage discount, and tax if you charge it.
+
+An invoice stays a **draft** until you issue it, and drafts are freely
+editable. Once issued it is part of your financial history: correct it by
+voiding and reissuing rather than by silently rewriting it. Print it or export
+it as an A4 PDF from the invoice itself.
+
+**Earnings** — record each payment as it arrives, including partial payments;
+the balance due updates as you go. The chart here shows what you billed against
+what you have collected, grouped by the month the invoice was *issued*, so each
+bar answers "of what I billed that month, how much has come in?"
+
+**Loans** — your own personal obligations, kept completely separate from client
+money and never mixed into any client total. Schedules support monthly, weekly,
+every-two-weeks, twice-monthly and custom due dates, and you can mark
+individual installments paid or correct a single occurrence's date without
+disturbing the rest of the schedule.
+
+### 4. Close the week
+
+**Review** collects what you completed, the work you recorded, what you
+collected, and what is coming up, then lets you plan the next week. Every
+figure on the page describes the same Monday-to-Sunday week.
+
+### Deleting things
+
+Deletion never destroys financial history. A client or project that already has
+invoices refuses to be deleted and tells you why, rather than quietly taking
+your billing records with it. Remove the invoices first if you genuinely mean
+to.
+
+### Shortcuts
 
 | Shortcut | Action |
 | --- | --- |
