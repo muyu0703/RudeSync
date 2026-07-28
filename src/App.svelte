@@ -864,7 +864,13 @@
         <MoneyView on:exportInvoice={handleInvoiceExport} />
       {:else if active === "review"}
         <StatRow>
-          <StatCard icon="check" label="Tasks done" value={String(completedThisWeek.length)} detail="This week" tone="positive" />
+          <StatCard
+            icon="check"
+            label="Tasks done"
+            value={String(completedThisWeek.length)}
+            detail="This week"
+            tone={completedThisWeek.length > 0 ? "positive" : "neutral"}
+          />
           <StatCard icon="work" label="Work recorded" value={String(reviewWorkEntries.length)} detail="Entries logged" tone="neutral" />
           <StatCard
             icon="arrow-up-right"
