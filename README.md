@@ -13,11 +13,37 @@ It is free and open source under the [MIT License](LICENSE).
 
 ## Screenshots
 
-> Add screenshots here before sharing the repository. Suggested set: **Today**
-> (the dashboard with its stat row), **Work** (a project with milestone
-> progress), **Money** (invoices), and the floating task widget over another
-> window. Put the files in `docs/screenshots/` and reference them as
-> `![Today](docs/screenshots/today.png)`.
+*All names, projects and figures below are fictional sample data.*
+
+**Today** — the daily surface: what is open, what is late, what is owed, and
+what you have finished each day for the last fortnight.
+
+![The Today dashboard, showing open task counts, outstanding money, today's tasks with priorities, and a completion chart](docs/screenshots/today.png)
+
+**Work** — a client, their project, the milestone plan that decides what can be
+billed, and the invoices raised against it.
+
+![The Work screen, showing a client, a fixed-price project, its kickoff and completion milestones, and the invoices raised against them](docs/screenshots/work.png)
+
+**Money** — invoices with their state, what is outstanding, and what has been
+collected this month.
+
+![The Money screen, listing invoices with issued and paid states, an outstanding balance and this month's received total](docs/screenshots/money.png)
+
+**Review** — closing the week. Every figure on the page describes the same
+Monday-to-Sunday week, including the chart.
+
+![The Weekly review screen, showing tasks done, work recorded, money received, weekly progress and a per-day completion chart](docs/screenshots/review.png)
+
+**Tasks** — everything in one list, with filters for Open, Inbox, Today,
+Upcoming, Recurring, Categories and Completed.
+
+![The Tasks screen, listing open tasks with their categories, priorities and dates](docs/screenshots/tasks.png)
+
+**The floating widget** — a small always-on-top window that keeps your open
+tasks over whatever you are working in, and stays in sync with the main window.
+
+![The floating task widget, a small translucent always-on-top list of open tasks](docs/screenshots/widget.png)
 
 ## Features
 
