@@ -638,24 +638,26 @@
       </div>
     </header>
 
-    {#if errorMessage}
-      <div class="error-banner" role="alert">
-        <span>{errorMessage}</span>
-        <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>
-          <Icon name="x" size={15} />
-        </button>
-      </div>
-    {/if}
+    <div class="workspace-banners">
+      {#if errorMessage}
+        <div class="error-banner" role="alert">
+          <span>{errorMessage}</span>
+          <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>
+            <Icon name="x" size={15} />
+          </button>
+        </div>
+      {/if}
 
-    {#if backupWarning && active !== "settings"}
-      <div class="backup-warning" role="status">
-        <Icon name="database" size={15} />
-        <span>{backupWarning}</span>
-        <button type="button" on:click={() => (active = "settings")}>
-          Open Settings
-        </button>
-      </div>
-    {/if}
+      {#if backupWarning && active !== "settings"}
+        <div class="backup-warning" role="status">
+          <Icon name="database" size={15} />
+          <span>{backupWarning}</span>
+          <button type="button" on:click={() => (active = "settings")}>
+            Open Settings
+          </button>
+        </div>
+      {/if}
+    </div>
 
     <div class="content-scroll">
       {#key active}
