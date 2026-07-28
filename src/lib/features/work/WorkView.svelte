@@ -632,7 +632,10 @@
                 </span>
                 <div>
                   <button class="text-button" type="button" on:click={() => openProjectDialog(project)}>
-                    <Icon name="more" size={13} /> Edit
+                    <svg class="edit-glyph" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg> Edit
                   </button>
                   <button class="text-button" type="button" on:click={() => openWorkDialog(project.id)}>
                     <Icon name="plus" size={13} /> Add work
@@ -716,7 +719,10 @@
                   title={`Edit ${client.name}`}
                   on:click={() => openClientDialog(client)}
                 >
-                  <Icon name="more" size={14} />
+                  <svg class="edit-glyph" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
                 </button>
               </div>
             {/each}
@@ -770,7 +776,10 @@
                   title={`Edit ${entry.title}`}
                   on:click={() => editWorkEntry(entry)}
                 >
-                  <Icon name="more" size={13} />
+                  <svg class="edit-glyph" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
                 </button>
               </article>
             {/each}
@@ -833,6 +842,11 @@
   .work-view {
     max-width: 1120px;
     margin: 0 auto;
+  }
+
+  .edit-glyph {
+    display: block;
+    flex: 0 0 auto;
   }
 
   .work-error {

@@ -983,7 +983,7 @@
     {/if}
   </div>
 
-  <div class="tabs" role="tablist" aria-label="Money sections">
+  <div class="segmented" role="tablist" aria-label="Money sections">
     <button
       id="money-tab-invoices"
       role="tab"
@@ -992,7 +992,7 @@
       class:active={activeTab === "invoices"}
       type="button"
       on:click={() => (activeTab = "invoices")}
-    >Invoices <span>{invoices.length}</span></button>
+    >Invoices <span class="soft-badge">{invoices.length}</span></button>
     <button
       id="money-tab-earnings"
       role="tab"
@@ -1001,7 +1001,7 @@
       class:active={activeTab === "earnings"}
       type="button"
       on:click={() => (activeTab = "earnings")}
-    >Earnings <span>{paymentRows.length}</span></button>
+    >Earnings <span class="soft-badge">{paymentRows.length}</span></button>
     <button
       id="money-tab-loans"
       role="tab"
@@ -1010,7 +1010,7 @@
       class:active={activeTab === "loans"}
       type="button"
       on:click={() => (activeTab = "loans")}
-    >Personal loans <span>{loans.length}</span></button>
+    >Personal loans <span class="soft-badge">{loans.length}</span></button>
   </div>
 
   {#if activeTab === "invoices"}
@@ -1049,8 +1049,9 @@
           </div>
           <div class="form-grid">
             <label class="span-2">
-              <span>Project</span>
+              <span class="field-label">Project</span>
               <select
+                class="field-input"
                 bind:value={invoiceProjectId}
                 bind:this={composerFirstFieldEl}
                 required
@@ -1063,8 +1064,8 @@
               </select>
             </label>
             <label>
-              <span>Milestone</span>
-              <select bind:value={invoiceMilestoneId} on:change={applyMilestoneDefaults}>
+              <span class="field-label">Milestone</span>
+              <select class="field-input" bind:value={invoiceMilestoneId} on:change={applyMilestoneDefaults}>
                 <option value="">Custom invoice</option>
                 {#if selectedProject?.milestones.length}
                   {#each selectedProject.milestones as milestone}
@@ -1080,12 +1081,12 @@
               </select>
             </label>
             <label>
-              <span>Issue date</span>
-              <input type="date" bind:value={invoiceIssueDate} required />
+              <span class="field-label">Issue date</span>
+              <input class="field-input" type="date" bind:value={invoiceIssueDate} required />
             </label>
             <label>
-              <span>Payment term</span>
-              <select bind:value={invoiceTerm}>
+              <span class="field-label">Payment term</span>
+              <select class="field-input" bind:value={invoiceTerm}>
                 <option value="immediate">Due immediately</option>
                 <option value="7-days">7 days</option>
                 <option value="14-days">14 days</option>
@@ -1095,16 +1096,16 @@
             </label>
             {#if invoiceTerm === "custom"}
               <label>
-                <span>Custom due date</span>
-                <input type="date" min={invoiceIssueDate} bind:value={invoiceCustomDueDate} required />
+                <span class="field-label">Custom due date</span>
+                <input class="field-input" type="date" min={invoiceIssueDate} bind:value={invoiceCustomDueDate} required />
               </label>
             {:else}
-              <div class="read-field"><span>Due date</span><strong>{formatDate(invoiceDueDate)}</strong></div>
+              <div class="read-field"><span class="field-label">Due date</span><strong class="field-input">{formatDate(invoiceDueDate)}</strong></div>
             {/if}
           </div>
 
           <fieldset class="line-items">
-            <legend>Line items</legend>
+            <legend class="field-label">Line items</legend>
             <div class="line-labels" aria-hidden="true">
               <span>Description</span><span>Qty</span><span>Unit price</span><span></span>
             </div>
@@ -1112,15 +1113,15 @@
               <div class="line-row">
                 <label>
                   <span class="sr-only">Description</span>
-                  <input bind:value={line.description} maxlength="180" placeholder="Milestone or deliverable" required />
+                  <input class="field-input" bind:value={line.description} maxlength="180" placeholder="Milestone or deliverable" required />
                 </label>
                 <label>
                   <span class="sr-only">Quantity</span>
-                  <input bind:value={line.quantity} inputmode="decimal" aria-label="Quantity" required />
+                  <input class="field-input" bind:value={line.quantity} inputmode="decimal" aria-label="Quantity" required />
                 </label>
                 <label>
                   <span class="sr-only">Unit price</span>
-                  <span class="money-input"><i>{selectedProject?.currency ?? "USD"}</i><input bind:value={line.unitPrice} inputmode="decimal" aria-label="Unit price" required /></span>
+                  <span class="money-input"><i>{selectedProject?.currency ?? "USD"}</i><input class="field-input" bind:value={line.unitPrice} inputmode="decimal" aria-label="Unit price" required /></span>
                 </label>
                 <button
                   class="icon-button"
@@ -1136,8 +1137,8 @@
 
           <div class="adjustments">
             <label>
-              <span>Discount</span>
-              <select bind:value={invoiceDiscountKind}>
+              <span class="field-label">Discount</span>
+              <select class="field-input" bind:value={invoiceDiscountKind}>
                 <option value="none">None</option>
                 <option value="fixed">Fixed amount</option>
                 <option value="percentage">Percentage</option>
@@ -1145,19 +1146,19 @@
             </label>
             {#if invoiceDiscountKind !== "none"}
               <label transition:fade={{ duration: motionDuration(180) }}>
-                <span>{invoiceDiscountKind === "fixed" ? "Discount amount" : "Discount %"}</span>
-                <input bind:value={invoiceDiscountValue} inputmode="decimal" required />
+                <span class="field-label">{invoiceDiscountKind === "fixed" ? "Discount amount" : "Discount %"}</span>
+                <input class="field-input" bind:value={invoiceDiscountValue} inputmode="decimal" required />
               </label>
             {/if}
             <label>
-              <span>Tax %</span>
-              <input bind:value={invoiceTax} inputmode="decimal" placeholder="Optional" />
+              <span class="field-label">Tax %</span>
+              <input class="field-input" bind:value={invoiceTax} inputmode="decimal" placeholder="Optional" />
             </label>
           </div>
 
           <div class="form-grid notes-grid">
-            <label><span>Notes</span><textarea bind:value={invoiceNotes} rows="2" placeholder="Optional invoice note"></textarea></label>
-            <label><span>Payment instructions</span><textarea bind:value={invoiceInstructions} rows="2" placeholder="Bank, PayPal, or other instructions"></textarea></label>
+            <label><span class="field-label">Notes</span><textarea class="field-textarea" bind:value={invoiceNotes} rows="2" placeholder="Optional invoice note"></textarea></label>
+            <label><span class="field-label">Payment instructions</span><textarea class="field-textarea" bind:value={invoiceInstructions} rows="2" placeholder="Bank, PayPal, or other instructions"></textarea></label>
           </div>
           <div class="totals" aria-live="polite">
             <span>Subtotal <b>{draftTotals ? formatMoney(draftTotals.subtotalMinor, selectedProject?.currency) : "—"}</b></span>
@@ -1167,7 +1168,7 @@
           </div>
           <div class="form-actions">
             <button
-              class="secondary"
+              class="secondary-button"
               type="button"
               on:click={() => {
                 showInvoiceForm = false;
@@ -1175,12 +1176,12 @@
               }}
             >Cancel</button>
             <button
-              class="secondary"
+              class="secondary-button"
               type="submit"
               disabled={saving || !selectedProject || !draftTotals}
             >{saving ? "Saving…" : "Save draft"}</button>
             <button
-              class="primary"
+              class="primary-button"
               type="button"
               disabled={saving || !selectedProject || !draftTotals}
               on:click={confirmIssueFromComposer}
@@ -1195,14 +1196,14 @@
         <div class="loading-state" aria-live="polite">Loading invoices…</div>
       {:else if !projects.length && !invoices.length}
         <div class="empty-state">
-          <span>INV</span><h3>Create a project first</h3>
+          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>Create a project first</h3>
           <p>Invoices live inside project containers. Add a client and project in Work, then return here.</p>
         </div>
       {:else if !invoices.length}
         <div class="empty-state">
-          <span>INV</span><h3>No invoices yet</h3>
+          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>No invoices yet</h3>
           <p>Create a kickoff or completion invoice from one of your projects.</p>
-          <button class="primary" type="button" on:click={openInvoiceComposer}>Create first invoice</button>
+          <button class="primary-button" type="button" on:click={openInvoiceComposer}>Create first invoice</button>
         </div>
       {:else}
         <Card>
@@ -1241,11 +1242,11 @@
                   on:submit|preventDefault={savePayment}
                   transition:slide={{ duration: motionDuration(180) }}
                 >
-                  <label><span>Payment amount</span><input bind:value={paymentAmount} inputmode="decimal" required /></label>
-                  <label><span>Received date</span><input type="date" bind:value={paymentDate} required /></label>
-                  <label class="grow"><span>Note / reference</span><input bind:value={paymentNote} placeholder="Optional" /></label>
-                  <button class="primary small" type="submit" disabled={saving}>{saving ? "Saving…" : "Record"}</button>
-                  <button class="secondary small" type="button" on:click={() => (paymentInvoiceId = null)}>Cancel</button>
+                  <label><span class="field-label">Payment amount</span><input class="field-input" bind:value={paymentAmount} inputmode="decimal" required /></label>
+                  <label><span class="field-label">Received date</span><input class="field-input" type="date" bind:value={paymentDate} required /></label>
+                  <label class="grow"><span class="field-label">Note / reference</span><input class="field-input" bind:value={paymentNote} placeholder="Optional" /></label>
+                  <button class="primary-button small" type="submit" disabled={saving}>{saving ? "Saving…" : "Record"}</button>
+                  <button class="secondary-button small" type="button" on:click={() => (paymentInvoiceId = null)}>Cancel</button>
                 </form>
               {/if}
 
@@ -1267,7 +1268,7 @@
                     <button class="text-button danger" type="button" disabled={saving} on:click={() => voidInvoice(invoice)}>Void</button>
                   {/if}
                   <button class="text-button" type="button" on:click={() => exportInvoice(invoice, "print")}>Print</button>
-                  <button class="secondary small" type="button" on:click={() => exportInvoice(invoice, "pdf")}>Export PDF</button>
+                  <button class="secondary-button small" type="button" on:click={() => exportInvoice(invoice, "pdf")}>Export PDF</button>
                 </div>
               </footer>
             </article>
@@ -1302,7 +1303,7 @@
             {/each}
           </div>
         {:else}
-          <div class="empty-state nested"><span>USD</span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
+          <div class="empty-state nested"><span class="empty-icon"><Icon name="money" size={19} /></span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
         {/if}
       </Card>
     </div>
@@ -1333,12 +1334,12 @@
             <span class="separation-chip">Never linked to clients</span>
           </div>
           <div class="form-grid">
-            <label class="span-2"><span>Lender / operator</span><input bind:value={loanOperator} maxlength="120" placeholder="Operator name" required /></label>
-            <label><span>Loan date</span><input type="date" bind:value={loanDate} required /></label>
-            <label><span>Explicit first payment</span><input type="date" min={loanDate} bind:value={loanFirstPayment} on:change={changeFirstPayment} required /></label>
+            <label class="span-2"><span class="field-label">Lender / operator</span><input class="field-input" bind:value={loanOperator} maxlength="120" placeholder="Operator name" required /></label>
+            <label><span class="field-label">Loan date</span><input class="field-input" type="date" bind:value={loanDate} required /></label>
+            <label><span class="field-label">Explicit first payment</span><input class="field-input" type="date" min={loanDate} bind:value={loanFirstPayment} on:change={changeFirstPayment} required /></label>
             <label>
-              <span>Frequency</span>
-              <select bind:value={loanFrequency} on:change={changeLoanFrequency}>
+              <span class="field-label">Frequency</span>
+              <select class="field-input" bind:value={loanFrequency} on:change={changeLoanFrequency}>
                 <option value="monthly">Monthly</option>
                 <option value="weekly">Weekly</option>
                 <option value="every-two-weeks">Every two weeks</option>
@@ -1347,21 +1348,21 @@
               </select>
             </label>
             {#if loanFrequency !== "custom"}
-              <label><span>Number of installments</span><input type="number" min="1" max="240" bind:value={loanCount} required /></label>
+              <label><span class="field-label">Number of installments</span><input class="field-input" type="number" min="1" max="240" bind:value={loanCount} required /></label>
             {/if}
             {#if loanFrequency === "twice-monthly"}
-              <label><span>First day of month</span><input type="number" min="1" max="31" bind:value={loanDayOne} required /></label>
-              <label><span>Second day of month</span><input type="number" min="1" max="31" bind:value={loanDayTwo} required /></label>
+              <label><span class="field-label">First day of month</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayOne} required /></label>
+              <label><span class="field-label">Second day of month</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayTwo} required /></label>
             {/if}
-            <label class="span-2"><span>Description</span><textarea bind:value={loanDescription} rows="2" placeholder="Optional note about this loan"></textarea></label>
+            <label class="span-2"><span class="field-label">Description</span><textarea class="field-textarea" bind:value={loanDescription} rows="2" placeholder="Optional note about this loan"></textarea></label>
           </div>
 
           {#if loanFrequency === "custom"}
             <fieldset class="custom-dates" transition:slide={{ duration: motionDuration(180) }}>
-              <legend>Custom due dates</legend>
+              <legend class="field-label">Custom due dates</legend>
               {#each loanScheduleDates as date, index}
                 <div>
-                  <label><span>Installment {index + 1}</span><input type="date" bind:value={loanScheduleDates[index]} required /></label>
+                  <label><span class="field-label">Installment {index + 1}</span><input class="field-input" type="date" bind:value={loanScheduleDates[index]} required /></label>
                   <button class="icon-button" type="button" disabled={index === 0} aria-label={`Remove installment ${index + 1}`} on:click={() => removeCustomDate(index)}>×</button>
                 </div>
               {/each}
@@ -1370,7 +1371,7 @@
           {/if}
 
           <div class="preview-toolbar">
-            <button class="secondary" type="button" on:click={generateLoanPreview}>
+            <button class="secondary-button" type="button" on:click={generateLoanPreview}>
               {loanScheduleDates.length ? "Refresh schedule preview" : "Generate schedule preview"}
             </button>
             {#if scheduleIsStale}<span role="status">Inputs changed · refresh before saving</span>{/if}
@@ -1387,8 +1388,8 @@
             </div>
           {/if}
           <div class="form-actions">
-            <button class="secondary" type="button" on:click={() => (showLoanForm = false)}>Cancel</button>
-            <button class="primary" type="submit" disabled={saving || !loanScheduleDates.length || scheduleIsStale}>
+            <button class="secondary-button" type="button" on:click={() => (showLoanForm = false)}>Cancel</button>
+            <button class="primary-button" type="submit" disabled={saving || !loanScheduleDates.length || scheduleIsStale}>
               {saving ? "Saving…" : "Save personal loan"}
             </button>
           </div>
@@ -1399,9 +1400,9 @@
         <div class="loading-state">Loading personal loans…</div>
       {:else if !loans.length}
         <div class="empty-state">
-          <span>LOAN</span><h3>No personal loans</h3>
+          <span class="empty-icon"><Icon name="loan" size={21} /></span><h3>No personal loans</h3>
           <p>Track due dates and paid status without mixing personal debt into client earnings.</p>
-          <button class="primary" type="button" on:click={() => (showLoanForm = true)}>Add personal loan</button>
+          <button class="primary-button" type="button" on:click={() => (showLoanForm = true)}>Add personal loan</button>
         </div>
       {:else}
         <div class="loan-list">
@@ -1442,6 +1443,7 @@
                     <label class="inline-date">
                       <span class="sr-only">Due date</span>
                       <input
+                        class="field-input"
                         type="date"
                         value={installment.dueDate}
                         disabled={busyInstallments.has(installment.id)}
@@ -1458,6 +1460,7 @@
                       <label class="inline-date">
                         <span class="sr-only">Paid date</span>
                         <input
+                          class="field-input"
                           type="date"
                           max={today}
                           value={installment.paidDate ?? today}
@@ -1475,6 +1478,7 @@
                       <label class="inline-date">
                         <span class="sr-only">Paid date</span>
                         <input
+                          class="field-input"
                           type="date"
                           max={today}
                           value={pendingPaidDate}
@@ -1513,35 +1517,25 @@
     max-width: 1120px;
     margin: 0 auto;
   }
-  button, input, select, textarea { font: inherit; }
-  button { color: inherit; }
   .composer-head, .invoice-main, .invoice-card footer, .preview-toolbar {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
   }
   .composer-head h3 { margin: 0; }
   .tab-intro { color: var(--text-secondary); font-size: 13px; margin: 0 0 14px; }
-  .primary, .secondary, .text-button, .icon-button {
-    border: 0; border-radius: var(--radius-control); cursor: pointer; font-weight: var(--weight-bold);
+  /* .primary-button / .secondary-button / .text-button are shared (app.css);
+     .small is a local compact modifier for the dense payment/footer rows,
+     and .icon-button (the × remove-line controls) has no shared equivalent. */
+  .small { padding: 7px var(--space-3); font-size: var(--text-11); }
+  .text-button.danger { color: var(--danger); }
+  .icon-button {
+    width: 31px; height: 31px; border: 0; border-radius: var(--radius-control);
+    cursor: pointer; background: transparent; color: var(--text-secondary); font-size: var(--text-17);
   }
-  .primary { background: var(--accent); color: var(--on-accent); padding: 10px 14px; }
-  .secondary { background: var(--surface-raised); border: 1px solid var(--separator-strong); padding: 9px 13px; }
-  .primary.small, .secondary.small { padding: 7px 10px; font-size: 11px; }
-  .text-button { background: transparent; color: var(--accent); padding: 6px; font-size: 12px; }
-  .icon-button { width: 31px; height: 31px; background: transparent; color: var(--text-secondary); font-size: var(--text-17); }
-  button:hover:not(:disabled) { filter: brightness(1.08); }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
-  }
-  button:disabled { cursor: not-allowed; opacity: .45; }
   .notice { display: flex; justify-content: space-between; gap: 14px; padding: 10px 12px; border-radius: var(--radius-control); margin: 0 0 14px; font-size: 12px; }
   .notice.error { color: var(--danger); background: var(--danger-fill); border: 1px solid var(--danger-fill); }
   .notice.success { color: var(--accent); background: var(--accent-fill); border: 1px solid var(--accent-line); }
   .notice button { background: none; border: 0; color: inherit; cursor: pointer; }
-  .tabs { display: flex; gap: 3px; border-bottom: 1px solid var(--separator-strong); }
-  .tabs button { position: relative; border: 0; background: transparent; color: var(--text-secondary); padding: 11px 13px; cursor: pointer; font-weight: 700; font-size: 12px; }
-  .tabs button.active { color: var(--text-primary); }
-  .tabs button.active::after { content: ""; position: absolute; height: 2px; left: 10px; right: 10px; bottom: -1px; background: var(--accent); }
-  .tabs button span { margin-left: 5px; color: var(--text-secondary); background: var(--surface-active); border-radius: var(--radius-pill); padding: 1px 6px; font-size: var(--text-11); }
+  .segmented span { margin-left: 5px; }
   .tab-panel { display: flex; flex-direction: column; gap: var(--space-4); padding-top: 15px; }
   .composer { background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); padding: 17px; margin-bottom: 14px; }
   .composer-head { padding-bottom: 14px; border-bottom: 1px solid var(--separator); margin-bottom: 14px; }
@@ -1549,14 +1543,16 @@
   .number-chip, .separation-chip { color: var(--accent); background: var(--accent-fill); border: 1px solid var(--accent-line); padding: 7px 9px; border-radius: var(--radius-control); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
   .form-grid .span-2 { grid-column: span 2; }
-  label, .read-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-  label > span, .read-field > span, legend { color: var(--text-secondary); font-size: var(--text-11); font-weight: var(--weight-bold); letter-spacing: .04em; }
-  input, select, textarea { width: 100%; box-sizing: border-box; color: var(--text-primary); background: var(--surface-window); border: 1px solid var(--separator-strong); border-radius: var(--radius-control); padding: 8px 9px; min-height: 35px; }
-  textarea { resize: vertical; }
-  select { color-scheme: dark; }
-  .read-field strong { min-height: 35px; box-sizing: border-box; display: flex; align-items: center; background: var(--surface-window); border: 1px solid var(--separator); border-radius: var(--radius-control); padding: 8px 9px; font-size: 12px; }
+  /* Field labels, inputs, selects and textareas use the shared .field-label /
+     .field-input / .field-textarea classes (app.css) instead of restyling the
+     bare elements; only layout and density stay local to this view. */
+  label, .read-field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  select.field-input { color-scheme: dark; }
+  /* .field-input's box (background/border/padding/height) only renders on a
+     block-level box; <strong> is inline by default, so it still needs an
+     explicit display here. */
+  .read-field strong { display: flex; align-items: center; }
   fieldset { border: 0; padding: 0; margin: 15px 0 0; }
-  legend { margin-bottom: 7px; }
   .line-labels, .line-row { display: grid; grid-template-columns: minmax(220px, 1fr) 75px 150px 34px; gap: 7px; align-items: center; }
   .line-labels { color: var(--text-tertiary); font-size: var(--text-11); padding: 0 4px 4px; }
   .line-row { margin-bottom: 6px; }
@@ -1596,7 +1592,6 @@
   .invoice-amount strong { font-size: var(--text-17); }
   .invoice-card footer { border-top: 1px solid var(--separator); padding: 8px 12px; }
   .invoice-card footer div { display: flex; align-items: center; gap: 5px; }
-  .text-button.danger { color: var(--danger); }
   .payment-form { display: flex; align-items: end; gap: 8px; background: var(--surface-window); border-top: 1px solid var(--separator); padding: 11px 13px; }
   .payment-form label { width: 145px; }
   .payment-form label.grow { flex: 1; }
@@ -1638,7 +1633,7 @@
   /* Danger means overdue, and the row already says "Overdue" in words. A merely
      unpaid installment due months out stays quiet. */
   .installment-list li.overdue small { color: var(--danger); }
-  .inline-date input { min-height: 28px; padding: 4px 7px; font-size: var(--text-11); }
+  .inline-date input { height: 28px; padding: 4px 7px; font-size: var(--text-11); }
   .check { width: 21px; height: 21px; border: 1px solid var(--separator-strong); background: var(--surface-window); border-radius: var(--radius-control); color: var(--on-accent); cursor: pointer; padding: 0; }
   .check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
   /* Default: top-level slab directly on --surface-window (invoice-tab and
@@ -1648,7 +1643,6 @@
      Card (the earnings tab) — same lighter-rung, no-shadow treatment as
      .invoice-card / .payment-list article. */
   .empty-state.nested, .loading-state.nested { background: var(--surface-raised); border-radius: var(--radius-control); box-shadow: none; }
-  .empty-state > span { display: grid; place-items: center; width: 45px; height: 45px; border-radius: var(--radius-control); background: var(--accent-fill); color: var(--accent); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .empty-state h3 { color: var(--text-primary); margin: 12px 0 3px; font-size: 15px; }
   .empty-state p { max-width: 440px; margin: 0 0 14px; font-size: 11px; line-height: 1.6; }
   .loading-state { font-size: 11px; }
@@ -1668,7 +1662,6 @@
     .line-row { grid-template-columns: 1fr 70px 110px 30px; }
     .adjustments { align-items: stretch; flex-direction: column; }
     .adjustments label, .payment-form label { width: 100%; }
-    .tabs { overflow-x: auto; }
     .invoice-dates { width: 100%; }
     .invoice-amount { text-align: left; }
     .loan-card summary { grid-template-columns: 32px 1fr 45px; }

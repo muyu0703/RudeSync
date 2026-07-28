@@ -552,7 +552,11 @@
             slot="header"
             title="Appearance"
             subtext="How RudeSync animates on this device."
-          />
+          >
+            <svelte:fragment slot="actions">
+              <span class="soft-badge" title="This control saves itself; it does not use the Save changes button below.">Applies immediately</span>
+            </svelte:fragment>
+          </SectionHeader>
 
           <div class="field">
             <span class="field-label">Animations</span>
@@ -566,7 +570,7 @@
                 >{option[1]}</button>
               {/each}
             </div>
-            <small class="field-hint">Follow system uses your Windows animation setting. This choice is saved on this device only.</small>
+            <small class="field-hint">Applies immediately and is saved on this device only. Follow system uses your Windows animation setting.</small>
           </div>
         </Card>
       </div>
@@ -738,6 +742,17 @@
   }
 
   .save-status { color: var(--text-tertiary); font-size: var(--text-12); }
+
+  /* The form runs several screens long, so the save row stays reachable
+     instead of only living above the fold (finding 20). */
+  .page-actions {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: var(--space-3) 0;
+    background: var(--surface-window);
+    border-bottom: 1px solid var(--separator);
+  }
 
   .settings-form { display: grid; gap: var(--space-4); }
 

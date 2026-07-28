@@ -3,15 +3,9 @@
 <style>
   .stat-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--space-3);
     max-width: 1120px;
     margin: 0 auto var(--space-4);
-  }
-  @media (max-width: 1020px) {
-    .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (max-width: 780px) {
-    .stat-row { grid-template-columns: 1fr; }
   }
 </style>
