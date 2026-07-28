@@ -12,8 +12,19 @@
     type BackupResult,
     type InvoiceProfile,
   } from "./types";
+  import {
+    getMotionPreference,
+    setMotionPreference,
+    type MotionPreference,
+  } from "../../motion";
 
   const service = createSettingsService();
+
+  const MOTION_OPTIONS: [MotionPreference, string][] = [
+    ["system", "Follow system"],
+    ["always", "Always on"],
+    ["reduced", "Off"],
+  ];
 
   let settings: AppSettings = { ...DEFAULT_SETTINGS };
   let profile: InvoiceProfile = { ...DEFAULT_INVOICE_PROFILE };
@@ -28,6 +39,7 @@
   let errorMessage = "";
   let successMessage = "";
   let latestBackup: BackupResult | null = null;
+  let motionPreference: MotionPreference = getMotionPreference();
 
   $: settingsDirty = JSON.stringify(settings) !== savedSettings;
   $: profileDirty = JSON.stringify(profile) !== savedProfile;
@@ -217,6 +229,11 @@
 
   function clearFeedback(): void {
     successMessage = "";
+  }
+
+  function selectMotionPreference(value: MotionPreference): void {
+    motionPreference = value;
+    setMotionPreference(value);
   }
 
   function errorText(error: unknown, fallback: string): string {
@@ -522,6 +539,29 @@
                 : "Startup registration will be applied when settings are saved."}
             </div>
           {/if}
+        </Card>
+
+        <Card>
+          <SectionHeader
+            slot="header"
+            title="Appearance"
+            subtext="How RudeSync animates on this device."
+          />
+
+          <div class="field">
+            <span class="field-label">Animations</span>
+            <div class="segmented" aria-label="Animations">
+              {#each MOTION_OPTIONS as option}
+                <button
+                  class:active={motionPreference === option[0]}
+                  type="button"
+                  aria-pressed={motionPreference === option[0]}
+                  on:click={() => selectMotionPreference(option[0])}
+                >{option[1]}</button>
+              {/each}
+            </div>
+            <small class="field-hint">Follow system uses your Windows animation setting. This choice is saved on this device only.</small>
+          </div>
         </Card>
       </div>
 
