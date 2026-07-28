@@ -417,14 +417,6 @@
     border-bottom: 1px solid var(--separator);
   }
 
-  .eyebrow {
-    color: var(--accent);
-    font-size: var(--text-11);
-    font-weight: var(--weight-semibold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
   h2 { margin: 4px 0 0; font-size: var(--text-20); letter-spacing: -0.02em; }
 
   .icon-close,

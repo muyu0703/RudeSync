@@ -1432,7 +1432,6 @@
   .money-heading h2 { font-size: var(--text-24); margin: 3px 0 4px; letter-spacing: -0.03em; }
   .money-heading p, .composer-head h3 { margin: 0; }
   .money-heading p { color: var(--text-secondary); font-size: 13px; }
-  .eyebrow { color: var(--accent); font-size: var(--text-11); font-weight: var(--weight-semibold); letter-spacing: .12em; text-transform: uppercase; }
   .primary, .secondary, .text-button, .icon-button {
     border: 0; border-radius: var(--radius-control); cursor: pointer; font-weight: var(--weight-bold);
   }
@@ -1456,7 +1455,7 @@
   .tabs button.active::after { content: ""; position: absolute; height: 2px; left: 10px; right: 10px; bottom: -1px; background: var(--accent); }
   .tabs button span { margin-left: 5px; color: var(--text-secondary); background: var(--surface-active); border-radius: var(--radius-pill); padding: 1px 6px; font-size: var(--text-11); }
   .tab-panel { display: flex; flex-direction: column; gap: var(--space-4); padding-top: 15px; }
-  .composer { background: var(--surface-content); border: 1px solid var(--separator-strong); border-radius: var(--radius-panel); padding: 17px; margin-bottom: 14px; }
+  .composer { background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); padding: 17px; margin-bottom: 14px; }
   .composer-head { padding-bottom: 14px; border-bottom: 1px solid var(--separator); margin-bottom: 14px; }
   .composer-head h3 { font-size: 17px; margin-top: 3px; }
   .number-chip, .separation-chip { color: var(--accent); background: var(--accent-fill); border: 1px solid var(--accent-line); padding: 7px 9px; border-radius: var(--radius-control); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
@@ -1486,7 +1485,9 @@
   .form-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--separator); margin-top: 14px; padding-top: 13px; }
   .invoice-list { display: grid; gap: var(--space-2); }
   .loan-list { display: grid; gap: 9px; }
-  .invoice-card, .loan-card { background: var(--surface-content); border: 1px solid var(--separator); border-radius: var(--radius-control); }
+  /* Same treatment as the shared Card: a surface with soft elevation, never an
+     outlined box inside an already-elevated card. */
+  .invoice-card, .loan-card { background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); }
   .invoice-main { padding: 13px 14px; }
   .invoice-identity { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px 9px; min-width: 240px; }
   .invoice-identity small { grid-column: 1 / -1; }
@@ -1509,7 +1510,7 @@
   .payment-form label.grow { flex: 1; }
   .payment-form input { min-height: 32px; padding: 6px 8px; }
   .payment-list { display: grid; gap: var(--space-2); }
-  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-content); padding: 11px 13px; font-size: 11px; }
+  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); background: var(--surface-content); padding: 11px 13px; font-size: 11px; }
   .payment-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--accent); background: var(--accent-fill); }
   .payment-list div { display: flex; flex-direction: column; gap: 2px; }
   .payment-list small, .payment-list time { color: var(--text-tertiary); }
@@ -1544,7 +1545,7 @@
   .inline-date input { min-height: 28px; padding: 4px 7px; font-size: var(--text-11); }
   .check { width: 21px; height: 21px; border: 1px solid var(--separator-strong); background: var(--surface-window); border-radius: var(--radius-control); color: var(--on-accent); cursor: pointer; padding: 0; }
   .check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
-  .empty-state, .loading-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 55px 20px; background: var(--surface-content); border: 1px solid var(--separator); border-radius: var(--radius-panel); color: var(--text-secondary); }
+  .empty-state, .loading-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 55px 20px; background: var(--surface-content); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); color: var(--text-secondary); }
   .empty-state > span { display: grid; place-items: center; width: 45px; height: 45px; border-radius: var(--radius-control); background: var(--accent-fill); color: var(--accent); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .empty-state h3 { color: var(--text-primary); margin: 12px 0 3px; font-size: 15px; }
   .empty-state p { max-width: 440px; margin: 0 0 14px; font-size: 11px; line-height: 1.6; }
