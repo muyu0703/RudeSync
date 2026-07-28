@@ -1419,7 +1419,6 @@
 <style>
   .money-view {
     color: var(--text-primary);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     width: 100%;
     max-width: 1120px;
     margin: 0 auto;
@@ -1460,7 +1459,7 @@
   .composer { background: var(--surface-content); border: 1px solid var(--separator-strong); border-radius: var(--radius-panel); padding: 17px; margin-bottom: 14px; }
   .composer-head { padding-bottom: 14px; border-bottom: 1px solid var(--separator); margin-bottom: 14px; }
   .composer-head h3 { font-size: 17px; margin-top: 3px; }
-  .number-chip, .separation-chip { color: var(--accent); background: var(--accent-fill); border: 1px solid var(--accent-line); padding: 7px 9px; border-radius: var(--radius-control); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .number-chip, .separation-chip { color: var(--accent); background: var(--accent-fill); border: 1px solid var(--accent-line); padding: 7px 9px; border-radius: var(--radius-control); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
   .form-grid .span-2 { grid-column: span 2; }
   label, .read-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -1475,7 +1474,7 @@
   .line-labels { color: var(--text-tertiary); font-size: var(--text-11); padding: 0 4px 4px; }
   .line-row { margin-bottom: 6px; }
   .money-input { display: flex; align-items: center; position: relative; }
-  .money-input i { position: absolute; left: 8px; color: var(--text-tertiary); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: ui-monospace, monospace; }
+  .money-input i { position: absolute; left: 8px; color: var(--text-tertiary); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .money-input input { padding-left: 36px; }
   .adjustments { display: flex; align-items: end; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--separator); }
   .adjustments label { width: 180px; }
@@ -1495,7 +1494,7 @@
   .status.paid { background: var(--accent-fill); color: var(--accent); }
   .status.overdue { background: var(--danger-fill); color: var(--danger); }
   .status.partially-paid { background: var(--amber-fill); color: var(--amber); }
-  .invoice-identity strong { font-weight: var(--weight-bold); font-size: var(--text-12); font-family: ui-monospace, monospace; }
+  .invoice-identity strong { font-weight: var(--weight-bold); font-size: var(--text-12); font-family: var(--font-mono); }
   .invoice-identity small, .invoice-dates span, .invoice-amount span, .invoice-card footer > span { color: var(--text-tertiary); font-size: var(--text-11); }
   .invoice-dates { display: flex; gap: 18px; }
   .invoice-dates span, .invoice-amount { display: flex; flex-direction: column; gap: 3px; }
@@ -1525,11 +1524,11 @@
   .schedule-preview > div strong { color: var(--text-primary); }
   .schedule-preview ol { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 190px; overflow: auto; margin: 10px 0 0; padding: 0; }
   .schedule-preview li { display: flex; gap: 7px; align-items: center; border: 1px solid var(--separator); border-radius: 5px; padding: 6px; font-size: var(--text-11); }
-  .schedule-preview li span { color: var(--accent); font-family: ui-monospace, monospace; }
+  .schedule-preview li span { color: var(--accent); font-family: var(--font-mono); }
   .loan-card { overflow: hidden; }
   .loan-card summary { list-style: none; display: grid; grid-template-columns: 32px minmax(220px, 1fr) 160px 50px; align-items: center; gap: 11px; cursor: pointer; padding: 13px 14px; }
   .loan-card summary::-webkit-details-marker { display: none; }
-  .loan-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; color: var(--amber); background: var(--amber-fill); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: ui-monospace, monospace; }
+  .loan-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; color: var(--amber); background: var(--amber-fill); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .loan-card summary div { display: flex; flex-direction: column; gap: 3px; }
   .loan-card summary small, .loan-next span { color: var(--text-tertiary); font-size: var(--text-11); }
   .loan-card summary > b { color: var(--accent); font-size: 12px; text-align: right; }
@@ -1546,7 +1545,7 @@
   .check { width: 21px; height: 21px; border: 1px solid var(--separator-strong); background: var(--surface-window); border-radius: var(--radius-control); color: var(--on-accent); cursor: pointer; padding: 0; }
   .check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
   .empty-state, .loading-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 55px 20px; background: var(--surface-content); border: 1px solid var(--separator); border-radius: var(--radius-panel); color: var(--text-secondary); }
-  .empty-state > span { display: grid; place-items: center; width: 45px; height: 45px; border-radius: var(--radius-control); background: var(--accent-fill); color: var(--accent); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: ui-monospace, monospace; }
+  .empty-state > span { display: grid; place-items: center; width: 45px; height: 45px; border-radius: var(--radius-control); background: var(--accent-fill); color: var(--accent); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .empty-state h3 { color: var(--text-primary); margin: 12px 0 3px; font-size: 15px; }
   .empty-state p { max-width: 440px; margin: 0 0 14px; font-size: 11px; line-height: 1.6; }
   .loading-state { font-size: 11px; }
