@@ -48,6 +48,7 @@
   let validationMessage = "";
   let titleInput: HTMLInputElement;
   let lastIdentity = "";
+  let backdropOutroing = false;
 
   $: if (open) {
     const identity = task?.id ?? "new";
@@ -207,7 +208,15 @@
 <svelte:window on:keydown={(event) => open && handleKeydown(event)} />
 
 {#if open}
-  <div class="backdrop" role="presentation" on:click|self={close} transition:fade={{ duration: motionDuration(140) }}>
+  <div
+    class="backdrop"
+    class:outroing={backdropOutroing}
+    role="presentation"
+    on:click|self={close}
+    transition:fade={{ duration: motionDuration(140) }}
+    on:outrostart={() => (backdropOutroing = true)}
+    on:outroend={() => (backdropOutroing = false)}
+  >
     <div
       class="dialog"
       role="dialog"
@@ -399,6 +408,7 @@
     background: rgb(2 7 6 / 78%);
     backdrop-filter: blur(5px);
   }
+  .backdrop.outroing { pointer-events: none; }
 
   .dialog {
     width: min(690px, 100%);

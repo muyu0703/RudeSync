@@ -99,6 +99,7 @@
   let errorMessage = "";
   let backupWarning = "";
   let setupPromptOpen = false;
+  let setupOverlayOutroing = false;
   let busyTaskIds = new Set<string>();
   let quickInput: HTMLInputElement;
   let searchInput: HTMLInputElement;
@@ -974,7 +975,14 @@
 </div>
 
 {#if setupPromptOpen}
-  <div class="setup-overlay" role="presentation" transition:fade={{ duration: motionDuration(140) }}>
+  <div
+    class="setup-overlay"
+    class:outroing={setupOverlayOutroing}
+    role="presentation"
+    transition:fade={{ duration: motionDuration(140) }}
+    on:outrostart={() => (setupOverlayOutroing = true)}
+    on:outroend={() => (setupOverlayOutroing = false)}
+  >
     <div
       class="setup-dialog"
       role="dialog"
