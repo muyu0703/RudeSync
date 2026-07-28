@@ -1,5 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import Card from "../../components/Card.svelte";
+  import SectionHeader from "../../components/SectionHeader.svelte";
 
   type ExportKind =
     | "tasks"
@@ -108,14 +110,12 @@
   }
 </script>
 
-<section class="settings-card export-card" aria-labelledby="export-title">
-  <header class="card-header">
-    <div>
-      <span class="card-kicker">Portable data</span>
-      <h3 id="export-title">CSV exports</h3>
-      <p>Save readable spreadsheet copies without changing your local database.</p>
-    </div>
-  </header>
+<Card>
+  <SectionHeader
+    slot="header"
+    title="CSV exports"
+    subtext="Save readable spreadsheet copies without changing your local database."
+  />
 
   <div class="export-grid">
     {#each exportOptions as option}
@@ -141,129 +141,66 @@
       {feedback}
     </p>
   {/if}
-</section>
+</Card>
 
 <style>
-  .export-card {
-    margin-top: 18px;
-    min-width: 0;
-    overflow: hidden;
-    background: var(--surface-1, #0e1512);
-    border: 1px solid var(--border-subtle, #1b2922);
-    border-radius: 12px;
-  }
-
-  .card-header {
-    padding: 15px 17px;
-    border-bottom: 1px solid var(--border-subtle, #1b2922);
-  }
-
-  .card-kicker {
-    color: var(--accent, #43d17f);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .card-header h3 {
-    margin: 3px 0 0;
-    color: var(--text-primary, #eef5f1);
-    font-size: 13px;
-    font-weight: 620;
-  }
-
-  .card-header p {
-    max-width: 620px;
-    margin: 4px 0 0;
-    color: var(--text-muted, #84938b);
-    font-size: 9.5px;
-    line-height: 1.55;
-  }
-
   .export-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 18px;
+    gap: var(--space-3);
   }
 
   .export-grid article {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-4);
     min-width: 0;
-    padding: 14px;
-    border: 1px solid var(--border-subtle, #233028);
-    border-radius: 10px;
-    background: var(--surface-raised, #111713);
+    padding: var(--space-3);
+    background: var(--surface-raised);
+    border-radius: var(--radius-control);
   }
 
-  .export-grid article > div {
-    min-width: 0;
-  }
-
-  .export-grid strong,
+  .export-grid article > div { min-width: 0; }
+  .export-grid strong, .export-grid small { display: block; }
+  .export-grid strong { font-size: var(--text-13); font-weight: var(--weight-medium); }
   .export-grid small {
-    display: block;
-  }
-
-  .export-grid strong {
-    color: var(--text-primary, #edf4ef);
-    font-size: 13px;
-  }
-
-  .export-grid small {
-    margin-top: 4px;
-    color: var(--text-muted, #8f9c93);
-    font-size: 11px;
+    margin-top: var(--space-1);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     line-height: 1.45;
   }
-
-  .export-grid button {
-    flex: 0 0 auto;
-  }
+  .export-grid button { flex: 0 0 auto; }
 
   .compact-button {
     display: inline-flex;
-    min-height: 34px;
     align-items: center;
     justify-content: center;
-    padding: 0 12px;
-    color: var(--text-secondary, #c6d2cc);
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    color: var(--text-secondary);
     font: inherit;
-    font-size: 9.5px;
-    font-weight: 650;
-    background: var(--surface-raised, #18221d);
-    border: 1px solid var(--border-strong, #26362e);
-    border-radius: 7px;
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
+    background: var(--surface-active);
+    border: 1px solid var(--separator-strong);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
-
   .compact-button:hover:not(:disabled) {
-    color: var(--text-primary, #eef5f1);
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.38));
+    color: var(--text-primary);
+    border-color: var(--accent-line);
   }
-
-  .compact-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
+  .compact-button:disabled { cursor: not-allowed; opacity: 0.45; }
 
   .export-feedback {
-    margin: 12px 0 0;
-    color: var(--accent, #35c96f);
-    font-size: 12px;
+    margin: var(--space-3) 0 0;
+    color: var(--accent);
+    font-size: var(--text-12);
   }
+  .export-feedback.error { color: var(--danger); }
 
-  .export-feedback.error {
-    color: var(--danger, #ef6c75);
-  }
-
-  @media (max-width: 980px) {
-    .export-grid {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 780px) {
+    .export-grid { grid-template-columns: 1fr; }
   }
 </style>

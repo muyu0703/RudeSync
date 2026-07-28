@@ -248,16 +248,16 @@
 <form on:submit|preventDefault={submit}>
   <div class="field-grid two">
     <label>
-      <span>Client <b aria-hidden="true">*</b></span>
-      <select bind:value={clientId} data-work-autofocus required>
+      <span class="field-label">Client <b aria-hidden="true">*</b></span>
+      <select class="field-input" bind:value={clientId} data-work-autofocus required>
         {#each clients as client (client.id)}
           <option value={client.id}>{client.name} · {client.currency}</option>
         {/each}
       </select>
     </label>
     <label>
-      <span>Status</span>
-      <select bind:value={status}>
+      <span class="field-label">Status</span>
+      <select class="field-input" bind:value={status}>
         <option value="active">Active</option>
         <option value="draft">Draft</option>
         {#if project}
@@ -269,13 +269,13 @@
   </div>
 
   <label>
-    <span>Project name <b aria-hidden="true">*</b></span>
-    <input bind:value={name} maxlength="160" required />
+    <span class="field-label">Project name <b aria-hidden="true">*</b></span>
+    <input class="field-input" bind:value={name} maxlength="160" required />
   </label>
 
   <div class="field-grid value-row">
     <label>
-      <span>Original quote</span>
+      <span class="field-label">Original quote</span>
       <div class="money-input">
         <i>{currency}</i>
         <input
@@ -289,18 +289,19 @@
           aria-describedby="project-quote-help"
         />
       </div>
-      <small id="project-quote-help">
+      <small id="project-quote-help" class="field-hint">
         Optional reference · seeds the Kickoff + Completion template. The
         project total is the sum of its milestones.
       </small>
     </label>
     <label>
-      <span>Start date</span>
-      <input bind:value={startDate} type="date" />
+      <span class="field-label">Start date</span>
+      <input class="field-input" bind:value={startDate} type="date" />
     </label>
     <label>
-      <span>Due date</span>
+      <span class="field-label">Due date</span>
       <input
+        class="field-input"
         bind:value={dueDate}
         min={startDate || undefined}
         type="date"
@@ -309,17 +310,18 @@
     </label>
   </div>
   {#if datesInvalid}
-    <p class="validation" role="alert">The due date cannot be before the start date.</p>
+    <p class="field-error" role="alert">The due date cannot be before the start date.</p>
   {/if}
 
   <label>
-    <span>Notes / description</span>
-    <textarea bind:value={description} maxlength="2000" rows="3"></textarea>
+    <span class="field-label">Notes / description</span>
+    <textarea class="field-textarea" bind:value={description} maxlength="2000" rows="3"></textarea>
   </label>
 
   <label>
-    <span>Reference URLs</span>
+    <span class="field-label">Reference URLs</span>
     <textarea
+      class="field-textarea"
       bind:value={urlsText}
       class:invalid={urlsInvalid}
       aria-invalid={urlsInvalid}
@@ -327,22 +329,22 @@
       rows="2"
       placeholder={"https://project.example.com\nhttps://github.com/…"}
     ></textarea>
-    <small id="project-url-help">Optional · one complete URL per line</small>
+    <small id="project-url-help" class="field-hint">Optional · one complete URL per line</small>
   </label>
   {#if urlsInvalid}
-    <p class="validation" role="alert">Use a complete http:// or https:// URL, one per line.</p>
+    <p class="field-error" role="alert">Use a complete http:// or https:// URL, one per line.</p>
   {/if}
 
   <fieldset>
     <legend>
-      <span>Milestones</span>
+      <span class="field-label">Milestones</span>
       <small>Plan total: {formatMoney(planTotal, currency)}</small>
     </legend>
 
     <div class="template-row">
       <label>
-        <span>Template</span>
-        <select bind:value={template} on:change={onTemplateOptionChange}>
+        <span class="field-label">Template</span>
+        <select class="field-input" bind:value={template} on:change={onTemplateOptionChange}>
           <option value="custom">Custom / empty</option>
           <option value="kickoff-completion">Kickoff + Completion</option>
           <option value="even-weekly">Even weekly</option>
@@ -351,11 +353,11 @@
       </label>
       {#if template === "even-weekly"}
         <label class="template-param">
-          <span>Weeks</span>
-          <input bind:value={weeklyWeeks} type="number" min="1" step="1" />
+          <span class="field-label">Weeks</span>
+          <input class="field-input" bind:value={weeklyWeeks} type="number" min="1" step="1" />
         </label>
         <label class="template-param">
-          <span>Amount / week</span>
+          <span class="field-label">Amount / week</span>
           <div class="money-input">
             <i>{currency}</i>
             <input
@@ -394,8 +396,9 @@
       <div class="milestone">
         <span class="milestone-number">{String(index + 1).padStart(2, "0")}</span>
         <label>
-          <span>Label</span>
+          <span class="field-label">Label</span>
           <input
+            class="field-input"
             bind:value={milestone.label}
             maxlength="80"
             placeholder="Milestone label"
@@ -403,7 +406,7 @@
           />
         </label>
         <label class="amount-field">
-          <span>Amount</span>
+          <span class="field-label">Amount</span>
           <div class="money-input">
             <i>{currency}</i>
             <input
@@ -468,12 +471,12 @@
 <style>
   form {
     display: grid;
-    gap: 15px;
+    gap: var(--space-4);
   }
 
   .field-grid {
     display: grid;
-    gap: 13px;
+    gap: var(--space-3);
   }
 
   .field-grid.two {
@@ -486,106 +489,64 @@
 
   label {
     display: grid;
-    gap: 7px;
+    gap: var(--space-2);
     min-width: 0;
   }
 
-  label > span,
   legend > span {
-    color: var(--text-secondary, #aebdb4);
-    font-size: 10.5px;
-    font-weight: 600;
+    margin-bottom: 0;
   }
 
   b {
-    color: var(--accent, #43d17f);
+    color: var(--accent);
     font-weight: inherit;
   }
 
-  input,
-  textarea,
-  select {
-    width: 100%;
-    color: var(--text-primary, #edf5f0);
-    font: inherit;
-    font-size: 12px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 8px;
-  }
-
-  input,
-  select {
-    height: 38px;
-    padding: 0 11px;
-  }
-
-  select {
+  select.field-input {
     color-scheme: dark;
-  }
-
-  textarea {
-    min-height: 68px;
-    padding: 9px 11px;
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  input:hover,
-  textarea:hover,
-  select:hover {
-    border-color: #3a4c42;
-  }
-
-  input:focus,
-  textarea:focus,
-  select:focus {
-    border-color: var(--accent, #43d17f);
-    outline: 1px solid var(--accent, #43d17f);
-    outline-offset: 0;
-  }
-
-  input[aria-invalid="true"],
-  textarea.invalid {
-    border-color: var(--danger, #ef766f);
   }
 
   .money-input {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 8px;
+    background: var(--surface-window);
+    border: 1px solid var(--separator-strong);
+    border-radius: var(--radius-control);
   }
 
   .money-input:focus-within {
-    border-color: var(--accent, #43d17f);
-    outline: 1px solid var(--accent, #43d17f);
+    border-color: var(--accent);
+    outline: none;
   }
 
   .money-input > i {
-    padding-left: 11px;
-    color: var(--text-muted, #75847b);
-    font-size: 9px;
+    padding-left: var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     font-style: normal;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-weight: var(--weight-semibold);
   }
 
   .money-input input {
+    height: 32px;
+    padding: 0 var(--space-3);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--text-13);
+    background: transparent;
     border: 0;
     outline: 0;
   }
 
   fieldset {
     display: grid;
-    gap: 10px;
+    gap: var(--space-2);
     margin: 1px 0 0;
-    padding: 14px;
-    background: rgba(67, 209, 127, 0.025);
-    border: 1px solid var(--border-subtle, #1b2821);
-    border-radius: 10px;
+    padding: var(--space-3);
+    background: var(--accent-fill);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-panel);
   }
 
   legend {
@@ -593,20 +554,20 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 0 2px 7px;
+    padding: 0 2px var(--space-2);
   }
 
   legend small {
-    color: var(--accent, #43d17f);
-    font-size: 9.5px;
-    font-weight: 650;
+    color: var(--accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
   }
 
   .template-row {
     display: flex;
     flex-wrap: wrap;
     align-items: end;
-    gap: 10px;
+    gap: var(--space-2);
     margin-bottom: 2px;
   }
 
@@ -621,26 +582,26 @@
   .template-confirm {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .template-confirm-label {
-    color: var(--danger, #ef766f);
-    font-size: 10.5px;
-    font-weight: 600;
+    color: var(--danger);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
   }
 
   .danger-solid {
-    color: #1a0906;
-    background: var(--danger, #ef766f);
-    border: 1px solid var(--danger, #ef766f);
+    color: var(--on-accent);
+    background: var(--danger);
+    border: 1px solid var(--danger);
   }
 
   .milestone {
     display: grid;
     grid-template-columns: 32px minmax(0, 1fr) 150px 92px;
     align-items: end;
-    gap: 10px;
+    gap: var(--space-2);
   }
 
   .milestone-number {
@@ -649,34 +610,34 @@
     height: 30px;
     margin-bottom: 4px;
     place-items: center;
-    color: var(--accent, #43d17f);
-    font-size: 9px;
-    font-weight: 700;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.1));
+    color: var(--accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    background: var(--accent-fill);
     border-radius: 50%;
   }
 
   .row-actions {
     display: flex;
-    gap: 6px;
+    gap: var(--space-1);
   }
 
   .row-actions button {
-    min-height: 38px;
+    min-height: 32px;
     min-width: 30px;
-    padding: 0 8px;
-    color: var(--text-secondary, #aebdb4);
+    padding: 0 var(--space-2);
+    color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-strong, #2a3a31);
+    border: 1px solid var(--separator-strong);
   }
 
   .row-actions button.danger {
-    color: var(--danger, #ef766f);
-    border-color: var(--border-strong, #2a3a31);
+    color: var(--danger);
+    border-color: var(--separator-strong);
   }
 
   .row-actions button.danger:hover {
-    border-color: var(--danger, #ef766f);
+    border-color: var(--danger);
   }
 
   .add-milestone {
@@ -685,37 +646,31 @@
 
   .empty-hint {
     margin: 2px 0;
-    color: var(--text-muted, #75847b);
-    font-size: 10.5px;
-  }
-
-  .validation {
-    margin: -6px 0 0;
-    color: var(--danger, #ef766f);
-    font-size: 10px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
   }
 
   footer {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--separator);
   }
 
   button {
     min-height: 36px;
-    padding: 0 14px;
+    padding: 0 var(--space-4);
     font: inherit;
-    font-size: 11px;
-    font-weight: 650;
-    border-radius: 8px;
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   button:focus-visible {
-    outline: 2px solid var(--accent, #43d17f);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -725,15 +680,15 @@
   }
 
   .secondary {
-    color: var(--text-secondary, #aebdb4);
+    color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-strong, #2a3a31);
+    border: 1px solid var(--separator-strong);
   }
 
   .primary {
-    color: #07120c;
-    background: var(--accent, #43d17f);
-    border: 1px solid var(--accent, #43d17f);
+    color: var(--on-accent);
+    background: var(--accent);
+    border: 1px solid var(--accent);
   }
 
   @media (max-width: 650px) {

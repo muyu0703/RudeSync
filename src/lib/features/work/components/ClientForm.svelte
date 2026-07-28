@@ -30,23 +30,24 @@
 <form on:submit|preventDefault={submit}>
   <div class="field-grid two">
     <label>
-      <span>Client name <b aria-hidden="true">*</b></span>
-      <input bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
+      <span class="field-label">Client name <b aria-hidden="true">*</b></span>
+      <input class="field-input" bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
     </label>
     <label>
-      <span>Company</span>
-      <input bind:value={companyName} maxlength="160" autocomplete="organization" />
+      <span class="field-label">Company</span>
+      <input class="field-input" bind:value={companyName} maxlength="160" autocomplete="organization" />
     </label>
   </div>
 
   <div class="field-grid currency-row">
     <label>
-      <span>Email</span>
-      <input bind:value={email} maxlength="254" type="email" autocomplete="email" />
+      <span class="field-label">Email</span>
+      <input class="field-input" bind:value={email} maxlength="254" type="email" autocomplete="email" />
     </label>
     <label>
-      <span>Currency</span>
+      <span class="field-label">Currency</span>
       <input
+        class="field-input"
         value={currency}
         on:input={(e) => (currency = e.currentTarget.value.toUpperCase())}
         maxlength="3"
@@ -56,18 +57,18 @@
         aria-describedby="currency-help"
         required
       />
-      <small id="currency-help">Three-letter code</small>
+      <small id="currency-help" class="field-hint">Three-letter code</small>
     </label>
   </div>
 
   <label>
-    <span>Billing address</span>
-    <textarea bind:value={billingAddress} maxlength="600" rows="2"></textarea>
+    <span class="field-label">Billing address</span>
+    <textarea class="field-textarea" bind:value={billingAddress} maxlength="600" rows="2"></textarea>
   </label>
 
   <label>
-    <span>Private notes</span>
-    <textarea bind:value={notes} maxlength="1200" rows="3"></textarea>
+    <span class="field-label">Private notes</span>
+    <textarea class="field-textarea" bind:value={notes} maxlength="1200" rows="3"></textarea>
   </label>
 
   <footer>
@@ -81,12 +82,12 @@
 <style>
   form {
     display: grid;
-    gap: 15px;
+    gap: var(--space-4);
   }
 
   .field-grid {
     display: grid;
-    gap: 13px;
+    gap: var(--space-3);
   }
 
   .field-grid.two {
@@ -99,82 +100,36 @@
 
   label {
     display: grid;
-    gap: 7px;
+    gap: var(--space-2);
     min-width: 0;
   }
 
-  label > span {
-    color: var(--text-secondary, #aebdb4);
-    font-size: 10.5px;
-    font-weight: 600;
-  }
-
   b {
-    color: var(--accent, #43d17f);
+    color: var(--accent);
     font-weight: inherit;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    color: var(--text-primary, #edf5f0);
-    font: inherit;
-    font-size: 12px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 8px;
-  }
-
-  input {
-    height: 38px;
-    padding: 0 11px;
-  }
-
-  textarea {
-    min-height: 62px;
-    padding: 9px 11px;
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  input:hover,
-  textarea:hover {
-    border-color: #3a4c42;
-  }
-
-  input:focus,
-  textarea:focus {
-    border-color: var(--accent, #43d17f);
-    outline: 1px solid var(--accent, #43d17f);
-    outline-offset: 0;
-  }
-
-  small {
-    color: var(--text-faint, #536158);
-    font-size: 9px;
   }
 
   footer {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--separator);
   }
 
   button {
     min-height: 36px;
-    padding: 0 14px;
+    padding: 0 var(--space-4);
     font: inherit;
-    font-size: 11px;
-    font-weight: 650;
-    border-radius: 8px;
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   button:focus-visible {
-    outline: 2px solid var(--accent, #43d17f);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -184,15 +139,15 @@
   }
 
   .secondary {
-    color: var(--text-secondary, #aebdb4);
+    color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-strong, #2a3a31);
+    border: 1px solid var(--separator-strong);
   }
 
   .primary {
-    color: #07120c;
-    background: var(--accent, #43d17f);
-    border: 1px solid var(--accent, #43d17f);
+    color: var(--on-accent);
+    background: var(--accent);
+    border: 1px solid var(--accent);
   }
 
   @media (max-width: 520px) {

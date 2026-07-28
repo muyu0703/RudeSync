@@ -60,8 +60,8 @@
 <form on:submit|preventDefault={submit}>
   <div class="field-grid project-row">
     <label>
-      <span>Project</span>
-      <select bind:value={projectId} data-work-autofocus>
+      <span class="field-label">Project</span>
+      <select class="field-input" bind:value={projectId} data-work-autofocus>
         <option value="">No project · personal work</option>
         {#each projects as project (project.id)}
           <option value={project.id}>{project.name}</option>
@@ -69,14 +69,15 @@
       </select>
     </label>
     <label>
-      <span>Completed on <b aria-hidden="true">*</b></span>
-      <input bind:value={workDate} type="date" required />
+      <span class="field-label">Completed on <b aria-hidden="true">*</b></span>
+      <input class="field-input" bind:value={workDate} type="date" required />
     </label>
   </div>
 
   <label>
-    <span>What did you complete? <b aria-hidden="true">*</b></span>
+    <span class="field-label">What did you complete? <b aria-hidden="true">*</b></span>
     <input
+      class="field-input"
       bind:value={title}
       maxlength="200"
       placeholder="Finished the account settings flow"
@@ -85,8 +86,9 @@
   </label>
 
   <label>
-    <span>Details</span>
+    <span class="field-label">Details</span>
     <textarea
+      class="field-textarea"
       bind:value={details}
       maxlength="2400"
       rows="4"
@@ -95,8 +97,9 @@
   </label>
 
   <label>
-    <span>Reference URLs</span>
+    <span class="field-label">Reference URLs</span>
     <textarea
+      class="field-textarea"
       bind:value={urlsText}
       class:invalid={validationMessage}
       aria-invalid={Boolean(validationMessage)}
@@ -104,11 +107,11 @@
       rows="3"
       placeholder={"https://project.example.com\nhttps://github.com/…"}
     ></textarea>
-    <small id="work-url-help">Optional · one complete URL per line</small>
+    <small id="work-url-help" class="field-hint">Optional · one complete URL per line</small>
   </label>
 
   {#if validationMessage}
-    <p class="validation" role="alert">{validationMessage}</p>
+    <p class="field-error" role="alert">{validationMessage}</p>
   {/if}
 
   <footer>
@@ -122,12 +125,12 @@
 <style>
   form {
     display: grid;
-    gap: 15px;
+    gap: var(--space-4);
   }
 
   .field-grid {
     display: grid;
-    gap: 13px;
+    gap: var(--space-3);
   }
 
   .project-row {
@@ -136,100 +139,44 @@
 
   label {
     display: grid;
-    gap: 7px;
+    gap: var(--space-2);
     min-width: 0;
   }
 
-  label > span {
-    color: var(--text-secondary, #aebdb4);
-    font-size: 10.5px;
-    font-weight: 600;
-  }
-
   b {
-    color: var(--accent, #43d17f);
+    color: var(--accent);
     font-weight: inherit;
   }
 
-  input,
-  textarea,
-  select {
-    width: 100%;
-    color: var(--text-primary, #edf5f0);
-    font: inherit;
-    font-size: 12px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 8px;
-  }
-
-  input,
-  select {
-    height: 38px;
-    padding: 0 11px;
-  }
-
-  select {
+  select.field-input {
     color-scheme: dark;
   }
 
-  textarea {
-    min-height: 68px;
-    padding: 9px 11px;
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  input:hover,
-  textarea:hover,
-  select:hover {
-    border-color: #3a4c42;
-  }
-
-  input:focus,
-  textarea:focus,
-  select:focus {
-    border-color: var(--accent, #43d17f);
-    outline: 1px solid var(--accent, #43d17f);
-    outline-offset: 0;
-  }
-
-  textarea.invalid {
-    border-color: var(--danger, #ef766f);
-  }
-
-  small {
-    color: var(--text-faint, #536158);
-    font-size: 9px;
-  }
-
-  .validation {
-    margin: -6px 0 0;
-    color: var(--danger, #ef766f);
-    font-size: 10px;
+  .field-textarea.invalid {
+    border-color: var(--danger);
   }
 
   footer {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--separator);
   }
 
   button {
     min-height: 36px;
-    padding: 0 14px;
+    padding: 0 var(--space-4);
     font: inherit;
-    font-size: 11px;
-    font-weight: 650;
-    border-radius: 8px;
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   button:focus-visible {
-    outline: 2px solid var(--accent, #43d17f);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -239,15 +186,15 @@
   }
 
   .secondary {
-    color: var(--text-secondary, #aebdb4);
+    color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-strong, #2a3a31);
+    border: 1px solid var(--separator-strong);
   }
 
   .primary {
-    color: #07120c;
-    background: var(--accent, #43d17f);
-    border: 1px solid var(--accent, #43d17f);
+    color: var(--on-accent);
+    background: var(--accent);
+    border: 1px solid var(--accent);
   }
 
   @media (max-width: 500px) {

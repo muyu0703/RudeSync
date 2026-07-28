@@ -56,7 +56,7 @@
     width: min(470px, calc(100vw - 32px));
     max-height: min(760px, calc(100vh - 32px));
     padding: 0;
-    color: var(--text-primary, #edf5f0);
+    color: var(--text-primary);
     background: transparent;
     border: 0;
     overflow: visible;
@@ -73,33 +73,32 @@
   .dialog-card {
     max-height: min(760px, calc(100vh - 32px));
     overflow: hidden;
-    background: var(--surface-1, #0c1210);
-    border: 1px solid var(--border-strong, #2a3a31);
-    border-radius: 14px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+    background: var(--surface-overlay);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--shadow-sheet);
   }
 
   header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 20px;
-    padding: 20px 22px 17px;
-    border-bottom: 1px solid var(--border-subtle, #1b2821);
+    gap: var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-4);
+    border-bottom: 1px solid var(--separator);
   }
 
   h2 {
     margin: 0;
-    color: var(--text-primary, #edf5f0);
-    font-size: 17px;
-    font-weight: 650;
+    color: var(--text-primary);
+    font-size: var(--text-17);
+    font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
   }
 
   p {
-    margin: 5px 0 0;
-    color: var(--text-muted, #75847b);
-    font-size: 11.5px;
+    margin: var(--space-1) 0 0;
+    color: var(--text-tertiary);
+    font-size: var(--text-12);
     line-height: 1.55;
   }
 
@@ -110,20 +109,20 @@
     flex: 0 0 auto;
     padding: 0;
     place-items: center;
-    color: var(--text-muted, #75847b);
+    color: var(--text-tertiary);
     background: transparent;
     border: 0;
-    border-radius: 7px;
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .close-button:hover {
-    color: var(--text-primary, #edf5f0);
-    background: var(--surface-raised, #141d18);
+    color: var(--text-primary);
+    background: var(--surface-hover);
   }
 
   .close-button:focus-visible {
-    outline: 2px solid var(--accent, #43d17f);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -138,9 +137,9 @@
 
   .dialog-body {
     max-height: calc(min(760px, 100vh - 32px) - 78px);
-    padding: 20px 22px 22px;
+    padding: var(--space-5);
     overflow-y: auto;
-    scrollbar-color: var(--border-strong, #2a3a31) transparent;
+    scrollbar-color: var(--separator-strong) transparent;
     scrollbar-width: thin;
   }
 
@@ -157,8 +156,8 @@
 
     header,
     .dialog-body {
-      padding-right: 17px;
-      padding-left: 17px;
+      padding-right: var(--space-4);
+      padding-left: var(--space-4);
     }
   }
 </style>

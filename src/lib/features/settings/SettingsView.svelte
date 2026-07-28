@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Card from "../../components/Card.svelte";
   import Icon from "../../components/Icon.svelte";
+  import SectionHeader from "../../components/SectionHeader.svelte";
   import DataExports from "./DataExports.svelte";
   import { createSettingsService } from "./settingsService";
   import {
@@ -249,24 +251,6 @@
   aria-label="RudeSync settings"
   aria-busy={loading}
 >
-  <header class="settings-hero">
-    <div>
-      <span class="eyebrow">Workspace preferences</span>
-      <h2>Make RudeSync yours.</h2>
-      <p>
-        Set up invoices, daily behavior, and backups. Your working data stays
-        on this device.
-      </p>
-    </div>
-    <div class="local-chip" title="RudeSync works without a cloud connection">
-      <span class="pulse" aria-hidden="true"></span>
-      <span>
-        <strong>Local-first</strong>
-        <small>{service.isDesktop ? "Desktop database" : "Browser preview storage"}</small>
-      </span>
-    </div>
-  </header>
-
   {#if !loading && backupWarning}
     <div class="message warning" role="status">
       <Icon name="database" size={14} />
@@ -285,6 +269,7 @@
       <Icon name="circle" size={14} />
       <span>{errorMessage}</span>
       <button
+        class="dismiss"
         type="button"
         aria-label="Dismiss error"
         on:click={() => (errorMessage = "")}
@@ -297,6 +282,7 @@
       <Icon name="check" size={14} strokeWidth={2.2} />
       <span>{successMessage}</span>
       <button
+        class="dismiss"
         type="button"
         aria-label="Dismiss message"
         on:click={() => (successMessage = "")}
@@ -305,7 +291,7 @@
   {/if}
 
   {#if loading}
-    <div class="loading-grid" aria-label="Loading settings">
+    <div class="skeleton-list" aria-label="Loading settings">
       <span></span><span></span><span></span>
     </div>
   {:else}
@@ -315,21 +301,44 @@
       on:input={clearFeedback}
       on:change={clearFeedback}
     >
-      <section class="settings-card profile-card" aria-labelledby="profile-title">
-        <header class="card-header">
-          <div class="card-icon"><Icon name="invoice" size={18} /></div>
-          <div>
-            <span class="card-kicker">PDF invoices</span>
-            <h3 id="profile-title">Invoice profile</h3>
-            <p>This information appears on printable invoices.</p>
-          </div>
-          {#if profileDirty}<span class="unsaved-badge">Unsaved</span>{/if}
-        </header>
+      <div class="page-actions">
+        <span class="save-status">
+          {hasChanges
+            ? "You have unsaved changes."
+            : "Everything is up to date."}
+        </span>
+        <button
+          class="text-button"
+          type="button"
+          disabled={!hasChanges || saving}
+          on:click={discardChanges}
+        >Discard</button>
+        <button
+          class="primary-button"
+          type="submit"
+          disabled={!hasChanges || saving}
+        >
+          <Icon name="check" size={14} strokeWidth={2.2} />
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+
+      <Card>
+        <SectionHeader
+          slot="header"
+          title="Invoice profile"
+          subtext="This information appears on printable invoices."
+        >
+          <svelte:fragment slot="actions">
+            {#if profileDirty}<span class="unsaved-badge">Unsaved</span>{/if}
+          </svelte:fragment>
+        </SectionHeader>
 
         <div class="field-grid">
           <label class="field">
-            <span>Your name <b>Required for invoices</b></span>
+            <span class="field-label">Your name <b>Required for invoices</b></span>
             <input
+              class="field-input"
               bind:value={profile.displayName}
               type="text"
               maxlength="160"
@@ -339,8 +348,9 @@
           </label>
 
           <label class="field">
-            <span>Business name <b>Optional</b></span>
+            <span class="field-label">Business name <b>Optional</b></span>
             <input
+              class="field-input"
               bind:value={profile.businessName}
               type="text"
               maxlength="160"
@@ -350,8 +360,9 @@
           </label>
 
           <label class="field wide">
-            <span>Business address</span>
+            <span class="field-label">Business address</span>
             <textarea
+              class="field-textarea"
               bind:value={profile.address}
               rows="3"
               maxlength="1000"
@@ -361,8 +372,9 @@
           </label>
 
           <label class="field">
-            <span>Email or contact</span>
+            <span class="field-label">Email or contact</span>
             <input
+              class="field-input"
               bind:value={profile.email}
               type="text"
               maxlength="240"
@@ -372,10 +384,11 @@
           </label>
 
           <div class="field">
-            <label for="invoice-logo">Logo path <b>Optional</b></label>
+            <label class="field-label" for="invoice-logo">Logo path <b>Optional</b></label>
             <div class="path-control">
               <input
                 id="invoice-logo"
+                class="field-input"
                 bind:value={profile.logoPath}
                 type="text"
                 maxlength="1000"
@@ -391,8 +404,9 @@
           </div>
 
           <label class="field wide">
-            <span>Payment instructions</span>
+            <span class="field-label">Payment instructions</span>
             <textarea
+              class="field-textarea"
               bind:value={profile.paymentInstructions}
               rows="4"
               maxlength="4000"
@@ -400,35 +414,29 @@
             ></textarea>
           </label>
         </div>
-      </section>
+      </Card>
 
-      <div class="two-column">
-        <section class="settings-card" aria-labelledby="defaults-title">
-          <header class="card-header compact">
-            <div class="card-icon"><Icon name="palette" size={18} /></div>
-            <div>
-              <span class="card-kicker">Defaults</span>
-              <h3 id="defaults-title">Money and calendar</h3>
-            </div>
-          </header>
+      <div class="settings-grid">
+        <Card>
+          <SectionHeader slot="header" title="Money and calendar" subtext="Defaults" />
 
           <div class="field-stack">
             <label class="field">
-              <span>Default currency</span>
+              <span class="field-label">Default currency</span>
               <input
-                class="short-input"
+                class="field-input short-input"
                 bind:value={settings.defaultCurrency}
                 type="text"
                 maxlength="3"
                 inputmode="text"
                 aria-describedby="currency-help"
               />
-              <small id="currency-help">USD by default; each client can override it.</small>
+              <small id="currency-help" class="field-hint">USD by default; each client can override it.</small>
             </label>
 
             <label class="field">
-              <span>Default invoice term</span>
-              <select bind:value={settings.defaultInvoiceTerm}>
+              <span class="field-label">Default invoice term</span>
+              <select class="field-input" bind:value={settings.defaultInvoiceTerm}>
                 <option value="immediate">Due immediately</option>
                 <option value="7-days">Due in 7 days</option>
                 <option value="14-days">Due in 14 days</option>
@@ -437,8 +445,8 @@
             </label>
 
             <label class="field">
-              <span>Date display</span>
-              <select bind:value={settings.dateFormat}>
+              <span class="field-label">Date display</span>
+              <select class="field-input" bind:value={settings.dateFormat}>
                 <option value="MMMM d, yyyy">July 23, 2026</option>
                 <option value="MM/dd/yyyy">07/23/2026</option>
                 <option value="yyyy-MM-dd">2026-07-23</option>
@@ -446,23 +454,17 @@
             </label>
 
             <label class="field">
-              <span>Week starts on</span>
-              <select bind:value={settings.weekStartsOn}>
+              <span class="field-label">Week starts on</span>
+              <select class="field-input" bind:value={settings.weekStartsOn}>
                 <option value={1}>Monday</option>
                 <option value={0}>Sunday</option>
               </select>
             </label>
           </div>
-        </section>
+        </Card>
 
-        <section class="settings-card" aria-labelledby="behavior-title">
-          <header class="card-header compact">
-            <div class="card-icon"><Icon name="tray" size={18} /></div>
-            <div>
-              <span class="card-kicker">Windows behavior</span>
-              <h3 id="behavior-title">Startup and alerts</h3>
-            </div>
-          </header>
+        <Card>
+          <SectionHeader slot="header" title="Startup and alerts" subtext="Windows behavior" />
 
           <div class="toggle-list">
             <label class="toggle-row">
@@ -507,21 +509,21 @@
                 : "Startup registration will be applied when settings are saved."}
             </div>
           {/if}
-        </section>
+        </Card>
       </div>
 
-      <section class="settings-card backup-card" aria-labelledby="backup-title">
-        <header class="card-header">
-          <div class="card-icon"><Icon name="database" size={18} /></div>
-          <div>
-            <span class="card-kicker">Recovery</span>
-            <h3 id="backup-title">Local backups</h3>
-            <p>Keep one automatic copy each day and remove older copies safely.</p>
-          </div>
-          <span class:active={settings.backupEnabled} class="state-badge">
-            {settings.backupEnabled ? "Daily" : "Paused"}
-          </span>
-        </header>
+      <Card>
+        <SectionHeader
+          slot="header"
+          title="Local backups"
+          subtext="Keep one automatic copy each day and remove older copies safely."
+        >
+          <svelte:fragment slot="actions">
+            <span class={settings.backupEnabled ? "status-pill" : "soft-badge"}>
+              {settings.backupEnabled ? "Daily" : "Paused"}
+            </span>
+          </svelte:fragment>
+        </SectionHeader>
 
         <div class="backup-layout">
           <div class="backup-main">
@@ -535,10 +537,11 @@
             </label>
 
             <div class="field">
-              <label for="backup-folder">Backup folder</label>
+              <label class="field-label" for="backup-folder">Backup folder</label>
               <div class="path-control">
                 <input
                   id="backup-folder"
+                  class="field-input"
                   value={backupDestination}
                   type="text"
                   readonly
@@ -551,7 +554,7 @@
                   on:click={chooseBackupFolder}
                 >{choosingFolder ? "Opening…" : "Choose folder"}</button>
               </div>
-              <small id="backup-folder-help">
+              <small id="backup-folder-help" class="field-hint">
                 {service.isDesktop
                   ? "Automatic retained copies use this folder; manual copies can be saved elsewhere."
                   : "Browser preview downloads a portable JSON backup instead."}
@@ -561,9 +564,10 @@
 
           <div class="backup-meta">
             <label class="field retention-field">
-              <span>Keep latest copies</span>
+              <span class="field-label">Keep latest copies</span>
               <div class="number-control">
                 <input
+                  class="field-input"
                   bind:value={settings.backupRetentionCount}
                   type="number"
                   min="1"
@@ -583,7 +587,7 @@
             </div>
 
             <button
-              class="backup-button"
+              class="primary-button"
               type="button"
               disabled={backingUp || saving || restoring}
               on:click={runManualBackup}
@@ -594,7 +598,7 @@
 
             {#if service.isDesktop}
               <button
-                class="restore-button"
+                class="compact-button"
                 type="button"
                 disabled={restoring || saving || backingUp}
                 on:click={restoreFromBackup}
@@ -605,746 +609,231 @@
             {/if}
           </div>
         </div>
-      </section>
+      </Card>
 
       <DataExports />
 
-      <aside class="privacy-note" aria-label="Local-first data status">
-        <span class="privacy-icon"><Icon name="shield" size={18} /></span>
+      <aside class="local-card" aria-label="Local-first data status">
+        <Icon name="shield" size={18} />
         <div>
           <strong>Your workspace is local-first.</strong>
-          <p>
+          <span>
             Tasks, projects, invoices, and loan schedules remain on this
             device. Cloud sync is not enabled in this version.
-          </p>
+          </span>
         </div>
-        <span class="local-status">
+        <span class="on-device">
           <i aria-hidden="true"></i>
           On device
         </span>
       </aside>
-
-      <footer class="save-bar">
-        <span>
-          {hasChanges
-            ? "You have unsaved changes."
-            : "Everything is up to date."}
-        </span>
-        <div>
-          <button
-            class="secondary-button"
-            type="button"
-            disabled={!hasChanges || saving}
-            on:click={discardChanges}
-          >Discard</button>
-          <button
-            class="primary-button"
-            type="submit"
-            disabled={!hasChanges || saving}
-          >
-            <Icon name="check" size={14} strokeWidth={2.2} />
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
-      </footer>
     </form>
   {/if}
 </section>
 
 <style>
   .settings-view {
-    width: min(100%, 1120px);
+    width: min(100%, 1000px);
     margin: 0 auto;
-    color: var(--text-primary, #eef5f1);
-  }
-
-  .settings-hero {
-    display: flex;
-    min-height: 116px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 28px;
-    margin-bottom: 16px;
-    padding: 22px 24px;
-    background: var(--surface-1, #0e1512);
-    border: 1px solid var(--border-subtle, #1b2922);
-    border-radius: 12px;
-  }
-
-  .eyebrow,
-  .card-kicker {
-    color: var(--accent, #43d17f);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .settings-hero h2 {
-    margin: 6px 0 5px;
-    font-size: clamp(20px, 2.5vw, 28px);
-    font-weight: 630;
-    letter-spacing: -0.035em;
-  }
-
-  .settings-hero p,
-  .card-header p {
-    max-width: 620px;
-    margin: 0;
-    color: var(--text-muted, #84938b);
-    font-size: 11.5px;
-    line-height: 1.55;
-  }
-
-  .local-chip {
-    display: flex;
-    min-width: 168px;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.08));
-    border: 1px solid var(--accent-border, rgba(67, 209, 127, 0.2));
-    border-radius: 9px;
-  }
-
-  .local-chip > span:last-child {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .local-chip strong {
-    color: var(--text-secondary, #c6d2cc);
-    font-size: 10.5px;
-    font-weight: 650;
-  }
-
-  .local-chip small {
-    margin-top: 2px;
-    color: var(--text-muted, #84938b);
-    font-size: 8.5px;
-  }
-
-  .pulse {
-    width: 7px;
-    height: 7px;
-    flex: 0 0 auto;
-    background: var(--accent, #43d17f);
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px var(--accent-soft, rgba(67, 209, 127, 0.1));
   }
 
   .message {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex;
     align-items: center;
-    gap: 9px;
+    justify-content: space-between;
+    gap: var(--space-3);
     min-height: 40px;
-    margin-bottom: 12px;
-    padding: 8px 10px 8px 13px;
-    font-size: 10.5px;
-    border: 1px solid;
-    border-radius: 8px;
+    margin: 0 0 var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-12);
+    border-radius: var(--radius-control);
   }
-
-  .message.error {
-    color: #ffb9b4;
-    background: rgba(185, 65, 58, 0.1);
-    border-color: rgba(239, 118, 111, 0.24);
-  }
-
-  .message.success {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.08));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.2));
-  }
-
-  .message.warning {
-    color: var(--amber, #e6b85c);
-    background: var(--amber-soft, rgba(230, 184, 92, 0.1));
-    border-color: rgba(230, 184, 92, 0.24);
-  }
-
-  .message button {
+  .message.error { color: var(--danger); background: var(--danger-fill); }
+  .message.warning { color: var(--amber); background: var(--amber-fill); }
+  .message.success { color: var(--accent); background: var(--accent-fill); }
+  .message > span { flex: 1; min-width: 0; }
+  .message .dismiss {
     display: grid;
-    padding: 5px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     place-items: center;
     color: inherit;
     background: transparent;
     border: 0;
-    border-radius: 5px;
-    cursor: pointer;
+    border-radius: var(--radius-control);
+  }
+  .message-action {
+    padding: var(--space-1) var(--space-2);
+    color: var(--on-accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
+    background: var(--amber);
+    border: 0;
+    border-radius: var(--radius-control);
+    white-space: nowrap;
   }
 
-  .message .message-action {
-    min-width: 88px;
-    padding: 6px 9px;
-    color: #171208;
-    font-size: 9px;
-    font-weight: 700;
-    background: var(--amber, #e6b85c);
-  }
+  .save-status { color: var(--text-tertiary); font-size: var(--text-12); }
 
-  .loading-grid {
-    display: grid;
-    gap: 12px;
-  }
+  .settings-form { display: grid; gap: var(--space-4); }
 
-  .loading-grid span {
-    min-height: 150px;
-    background: var(--surface-1, #0e1512);
-    border: 1px solid var(--border-subtle, #1b2922);
-    border-radius: 12px;
-    animation: settings-pulse 1.2s ease-in-out infinite alternate;
-  }
-
-  .loading-grid span:first-child {
-    min-height: 330px;
-  }
-
-  @keyframes settings-pulse {
-    to { opacity: 0.52; }
-  }
-
-  .settings-form {
-    display: grid;
-    gap: 14px;
-  }
-
-  .settings-card {
-    display: block;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    gap: 0;
-    padding: 0;
-    background: var(--surface-1, #0e1512);
-    border: 1px solid var(--border-subtle, #1b2922);
-    border-radius: 12px;
-  }
-
-  .card-header {
-    display: grid;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    min-height: 76px;
-    padding: 14px 17px;
-    border-bottom: 1px solid var(--border-subtle, #1b2922);
-  }
-
-  .card-header.compact {
-    min-height: 68px;
-  }
-
-  .card-icon,
-  .privacy-icon {
-    display: grid;
-    width: 36px;
-    height: 36px;
-    place-items: center;
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.08));
-    border-radius: 9px;
-  }
-
-  .card-header h3 {
-    margin: 3px 0 0;
-    font-size: 13px;
-    font-weight: 620;
-  }
-
-  .card-header p {
-    margin-top: 4px;
-    font-size: 9.5px;
-  }
-
-  .unsaved-badge,
-  .state-badge {
-    padding: 4px 7px;
-    color: var(--amber, #e6b85c);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    background: var(--amber-soft, rgba(230, 184, 92, 0.1));
-    border: 1px solid rgba(230, 184, 92, 0.2);
-    border-radius: 99px;
-    text-transform: uppercase;
-  }
-
-  .state-badge {
-    color: var(--text-muted, #84938b);
-    background: var(--surface-raised, #18221d);
-    border-color: var(--border-subtle, #1b2922);
-  }
-
-  .state-badge.active {
-    color: var(--accent, #43d17f);
-    background: var(--accent-soft, rgba(67, 209, 127, 0.08));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.2));
-  }
+  .field { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); }
+  .field-stack { display: grid; gap: var(--space-4); }
 
   .field-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 15px 18px;
-    padding: 18px;
+    gap: var(--space-4);
   }
-
-  .field-grid .wide {
-    grid-column: 1 / -1;
-  }
-
-  .field,
-  .field-stack {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .field-stack {
-    gap: 15px;
-    padding: 18px;
-  }
-
-  .field > span,
-  .field > label,
-  .field label {
-    margin-bottom: 6px;
-    color: var(--text-secondary, #c6d2cc);
-    font-size: 9.5px;
-    font-weight: 590;
-  }
+  .field-grid .wide { grid-column: 1 / -1; }
 
   .field b {
-    margin-left: 4px;
-    color: var(--text-faint, #5f6c65);
-    font-size: 8px;
-    font-weight: 520;
+    margin-left: var(--space-1);
+    color: var(--text-tertiary);
+    font-weight: var(--weight-regular);
   }
 
-  .field small {
-    margin-top: 6px;
-    color: var(--text-faint, #5f6c65);
-    font-size: 8.5px;
-    line-height: 1.45;
-  }
-
-  input,
-  select,
-  textarea {
-    width: 100%;
-    min-width: 0;
-    color: var(--text-primary, #eef5f1);
-    font: inherit;
-    font-size: 10.5px;
-    background: var(--surface-0, #090d0b);
-    border: 1px solid var(--border-strong, #26362e);
-    border-radius: 7px;
-    outline: none;
-  }
-
-  input,
-  select {
-    height: 36px;
-    padding: 0 10px;
-  }
-
-  textarea {
-    min-height: 68px;
-    padding: 9px 10px;
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  input::placeholder,
-  textarea::placeholder {
-    color: var(--text-faint, #5f6c65);
-  }
-
-  input:focus,
-  select:focus,
-  textarea:focus {
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.38));
-    box-shadow: 0 0 0 3px rgba(67, 209, 127, 0.05);
-  }
-
-  input[readonly] {
-    color: var(--text-muted, #84938b);
-    cursor: default;
-  }
-
-  .short-input {
-    text-transform: uppercase;
-  }
+  select.field-input { color-scheme: dark; }
+  .field-input[readonly] { color: var(--text-tertiary); cursor: default; }
+  .short-input { text-transform: uppercase; }
 
   .path-control {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 7px;
+    gap: var(--space-2);
   }
 
-  .compact-button,
-  .secondary-button,
-  .primary-button,
-  .backup-button,
-  .restore-button {
+  .compact-button {
     display: inline-flex;
-    min-height: 34px;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 0 12px;
-    color: var(--text-secondary, #c6d2cc);
+    gap: var(--space-1);
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    white-space: nowrap;
+    color: var(--text-secondary);
     font: inherit;
-    font-size: 9.5px;
-    font-weight: 650;
-    background: var(--surface-raised, #18221d);
-    border: 1px solid var(--border-strong, #26362e);
-    border-radius: 7px;
-    cursor: pointer;
+    font-size: var(--text-12);
+    font-weight: var(--weight-medium);
+    background: var(--surface-raised);
+    border: 1px solid var(--separator-strong);
+    border-radius: var(--radius-control);
+  }
+  .compact-button:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--accent-line);
   }
 
-  .compact-button:hover:not(:disabled),
-  .secondary-button:hover:not(:disabled),
-  .restore-button:hover:not(:disabled) {
-    color: var(--text-primary, #eef5f1);
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.38));
-  }
-
-  button:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
-
-  .two-column {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-  }
-
-  .toggle-list {
-    display: grid;
-    padding: 5px 17px;
-  }
-
+  .toggle-list { display: grid; }
+  .toggle-list .toggle-row + .toggle-row { border-top: 1px solid var(--separator); }
   .toggle-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 14px;
-    min-height: 63px;
+    gap: var(--space-4);
+    min-height: 56px;
     cursor: pointer;
   }
-
-  .toggle-list .toggle-row + .toggle-row {
-    border-top: 1px solid var(--border-subtle, #1b2922);
-  }
-
-  .toggle-row > span {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .toggle-row strong {
-    color: var(--text-secondary, #c6d2cc);
-    font-size: 10.5px;
-    font-weight: 590;
-  }
-
-  .toggle-row small {
-    margin-top: 4px;
-    color: var(--text-muted, #84938b);
-    font-size: 8.5px;
-    line-height: 1.4;
-  }
-
-  .toggle-row input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-  }
-
+  .toggle-row.standalone { min-height: 44px; }
+  .toggle-row > span { display: flex; min-width: 0; flex-direction: column; }
+  .toggle-row strong { font-size: var(--text-13); font-weight: var(--weight-medium); }
+  .toggle-row small { margin-top: 2px; color: var(--text-tertiary); font-size: var(--text-11); line-height: 1.4; }
+  .toggle-row input { position: absolute; width: 1px; height: 1px; opacity: 0; }
   .toggle-row i {
     position: relative;
     width: 34px;
     height: 18px;
-    background: var(--surface-raised, #18221d);
-    border: 1px solid var(--border-strong, #26362e);
-    border-radius: 99px;
-    transition: 120ms ease;
+    background: var(--surface-raised);
+    border: 1px solid var(--separator-strong);
+    border-radius: var(--radius-pill);
+    transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease);
   }
-
   .toggle-row i::after {
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 10px;
-    height: 10px;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
     content: "";
-    background: var(--text-faint, #5f6c65);
+    background: var(--text-tertiary);
     border-radius: 50%;
-    transition: 120ms ease;
+    transition: left var(--duration) var(--ease), background var(--duration) var(--ease);
   }
-
-  .toggle-row input:checked + i {
-    background: var(--accent-soft, rgba(67, 209, 127, 0.12));
-    border-color: var(--accent-border, rgba(67, 209, 127, 0.4));
-  }
-
-  .toggle-row input:checked + i::after {
-    left: 19px;
-    background: var(--accent, #43d17f);
-  }
-
-  .toggle-row input:focus-visible + i {
-    outline: 2px solid var(--accent, #43d17f);
-    outline-offset: 2px;
-  }
+  .toggle-row input:checked + i { background: var(--accent-fill); border-color: var(--accent-line); }
+  .toggle-row input:checked + i::after { left: 18px; background: var(--accent); }
+  .toggle-row input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .registration-note {
     display: flex;
     align-items: center;
-    gap: 7px;
-    margin: 2px 17px 15px;
-    padding: 8px 9px;
-    color: var(--text-muted, #84938b);
-    font-size: 8.5px;
-    background: var(--surface-0, #090d0b);
-    border-radius: 6px;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+    background: var(--surface-window);
+    border-radius: var(--radius-control);
   }
-
-  .registration-note span {
-    width: 5px;
-    height: 5px;
-    background: var(--amber, #e6b85c);
-    border-radius: 50%;
-  }
-
-  .registration-note.registered span {
-    background: var(--accent, #43d17f);
-  }
+  .registration-note span { width: 5px; height: 5px; background: var(--amber); border-radius: 50%; }
+  .registration-note.registered span { background: var(--accent); }
 
   .backup-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(245px, 0.6fr);
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+    gap: var(--space-5);
   }
+  .backup-main, .backup-meta { display: grid; align-content: start; gap: var(--space-4); }
+  .backup-meta { padding-left: var(--space-4); border-left: 1px solid var(--separator); }
 
-  .backup-main,
-  .backup-meta {
-    display: grid;
-    gap: 17px;
-    padding: 17px;
-  }
+  .number-control { display: grid; grid-template-columns: 82px auto; align-items: center; gap: var(--space-2); }
+  .number-control span { color: var(--text-tertiary); font-size: var(--text-11); }
 
-  .backup-meta {
-    align-content: start;
-    background: var(--surface-0, #090d0b);
-    border-left: 1px solid var(--border-subtle, #1b2922);
-  }
-
-  .toggle-row.standalone {
-    min-height: 48px;
-  }
-
-  .number-control {
-    display: grid;
-    grid-template-columns: 82px auto;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .number-control span {
-    color: var(--text-muted, #84938b);
-    font-size: 9px;
-  }
-
-  .last-backup {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    padding-top: 2px;
-  }
-
-  .last-backup > span {
-    color: var(--text-faint, #5f6c65);
-    font-size: 8px;
-    font-weight: 650;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .last-backup strong {
-    margin-top: 5px;
-    color: var(--text-secondary, #c6d2cc);
-    font-size: 9.5px;
-    font-weight: 560;
-  }
-
+  .last-backup { display: flex; min-width: 0; flex-direction: column; }
+  .last-backup > span { color: var(--text-tertiary); font-size: var(--text-11); }
+  .last-backup strong { margin-top: var(--space-1); font-size: var(--text-12); font-weight: var(--weight-medium); }
   .last-backup small {
-    margin-top: 3px;
+    margin-top: 2px;
     overflow: hidden;
-    color: var(--text-faint, #5f6c65);
-    font-size: 8px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .backup-button,
-  .primary-button {
-    color: #06110b;
-    background: var(--accent, #43d17f);
-    border-color: transparent;
+  .unsaved-badge {
+    padding: 2px var(--space-2);
+    color: var(--amber);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
+    background: var(--amber-fill);
+    border-radius: var(--radius-pill);
   }
 
-  .backup-button:hover:not(:disabled),
-  .primary-button:hover:not(:disabled) {
-    background: var(--accent-bright, #5be493);
-  }
-
-  .backup-button {
-    justify-self: start;
-  }
-
-  .restore-button {
-    justify-self: start;
-  }
-
-  .privacy-note {
-    display: grid;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    background: var(--accent-soft, rgba(67, 209, 127, 0.07));
-    border: 1px solid var(--accent-border, rgba(67, 209, 127, 0.19));
-    border-radius: 10px;
-  }
-
-  .privacy-note strong {
-    color: var(--text-secondary, #c6d2cc);
-    font-size: 10.5px;
-    font-weight: 620;
-  }
-
-  .privacy-note p {
-    max-width: 700px;
-    margin: 3px 0 0;
-    color: var(--text-muted, #84938b);
-    font-size: 8.8px;
-    line-height: 1.45;
-  }
-
-  .local-status {
+  .on-device {
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: var(--accent, #43d17f);
-    font-size: 8.5px;
-    font-weight: 650;
+    gap: var(--space-1);
+    margin-left: auto;
+    color: var(--accent);
+    font-size: var(--text-11);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
   }
-
-  .local-status i {
-    width: 5px;
-    height: 5px;
-    background: currentColor;
-    border-radius: 50%;
-  }
-
-  .save-bar {
-    position: sticky;
-    bottom: -30px;
-    z-index: 2;
-    display: flex;
-    min-height: 60px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    padding: 10px 13px 10px 16px;
-    background: rgba(13, 19, 16, 0.96);
-    border: 1px solid var(--border-strong, #26362e);
-    border-radius: 10px;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.16);
-  }
-
-  .save-bar > span {
-    color: var(--text-muted, #84938b);
-    font-size: 9.5px;
-  }
-
-  .save-bar > div {
-    display: flex;
-    gap: 7px;
-  }
+  .on-device i { width: 5px; height: 5px; background: currentColor; border-radius: 50%; }
 
   @media (max-width: 880px) {
-    .two-column,
-    .backup-layout {
-      grid-template-columns: 1fr;
-    }
-
+    .backup-layout { grid-template-columns: 1fr; }
     .backup-meta {
-      border-top: 1px solid var(--border-subtle, #1b2922);
+      padding-left: 0;
+      padding-top: var(--space-4);
       border-left: 0;
+      border-top: 1px solid var(--separator);
     }
   }
 
   @media (max-width: 650px) {
-    .settings-hero {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-
-    .local-chip {
-      width: 100%;
-    }
-
-    .field-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .field-grid .wide {
-      grid-column: auto;
-    }
-
-    .card-header {
-      grid-template-columns: 38px minmax(0, 1fr);
-    }
-
-    .card-header > :last-child {
-      grid-column: 2;
-      justify-self: start;
-    }
-
-    .privacy-note {
-      grid-template-columns: 38px minmax(0, 1fr);
-    }
-
-    .privacy-note .local-status {
-      grid-column: 2;
-    }
-
-    .save-bar {
-      bottom: -42px;
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .save-bar > div {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
+    .field-grid { grid-template-columns: 1fr; }
+    .field-grid .wide { grid-column: auto; }
   }
 </style>

@@ -223,8 +223,9 @@
 
       <form on:submit|preventDefault={submit}>
         <label class="field span-2">
-          <span>Task title</span>
+          <span class="field-label">Task title</span>
           <input
+            class="field-input"
             bind:this={titleInput}
             bind:value={title}
             maxlength="240"
@@ -234,8 +235,9 @@
         </label>
 
         <label class="field span-2">
-          <span>Notes <small>optional</small></span>
+          <span class="field-label">Notes <small>optional</small></span>
           <textarea
+            class="field-textarea"
             bind:value={notes}
             rows="3"
             maxlength="20000"
@@ -244,18 +246,18 @@
         </label>
 
         <label class="field">
-          <span>Planned date</span>
-          <input bind:value={plannedDate} type="date" />
+          <span class="field-label">Planned date</span>
+          <input class="field-input" bind:value={plannedDate} type="date" />
         </label>
 
         <label class="field">
-          <span>Deadline</span>
-          <input bind:value={dueDate} type="date" />
+          <span class="field-label">Deadline</span>
+          <input class="field-input" bind:value={dueDate} type="date" />
         </label>
 
         <label class="field">
-          <span>Priority</span>
-          <select bind:value={priority}>
+          <span class="field-label">Priority</span>
+          <select class="field-input" bind:value={priority}>
             <option value="none">None</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -265,13 +267,13 @@
         </label>
 
         <label class="field">
-          <span>Category</span>
-          <input bind:value={category} maxlength="80" placeholder="Client work" />
+          <span class="field-label">Category</span>
+          <input class="field-input" bind:value={category} maxlength="80" placeholder="Client work" />
         </label>
 
         <label class="field span-2">
-          <span>Project <small>optional</small></span>
-          <select bind:value={projectId}>
+          <span class="field-label">Project <small>optional</small></span>
+          <select class="field-input" bind:value={projectId}>
             <option value="">Personal / no project</option>
             {#each projects as project (project.id)}
               <option value={project.id}>{project.clientName} — {project.name}</option>
@@ -280,8 +282,8 @@
         </label>
 
         <label class="field">
-          <span>Repeats</span>
-          <select bind:value={recurrence}>
+          <span class="field-label">Repeats</span>
+          <select class="field-input" bind:value={recurrence}>
             <option value="none">Does not repeat</option>
             <option value="daily">Daily</option>
             <option value="weekdays">Weekdays</option>
@@ -292,18 +294,18 @@
         </label>
 
         <label class="field">
-          <span>Reminder</span>
-          <input bind:value={reminderLocal} type="datetime-local" />
+          <span class="field-label">Reminder</span>
+          <input class="field-input" bind:value={reminderLocal} type="datetime-local" />
         </label>
 
         {#if recurrence === "custom"}
           <label class="field">
-            <span>Repeat every</span>
-            <input bind:value={customInterval} type="number" min="1" max="365" />
+            <span class="field-label">Repeat every</span>
+            <input class="field-input" bind:value={customInterval} type="number" min="1" max="365" />
           </label>
           <label class="field">
-            <span>Interval</span>
-            <select bind:value={customUnit}>
+            <span class="field-label">Interval</span>
+            <select class="field-input" bind:value={customUnit}>
               <option value="days">Days</option>
               <option value="weeks">Weeks</option>
               <option value="months">Months</option>
@@ -313,7 +315,7 @@
 
         {#if recurrence === "weekly"}
           <fieldset class="weekday-picker span-2">
-            <legend>Repeat on</legend>
+            <legend class="field-label">Repeat on</legend>
             <div>
               {#each weekdayOptions as [code, label]}
                 <button
@@ -358,7 +360,7 @@
           {#each subtaskDrafts as subtask (subtask.id)}
             <div class="subtask-row">
               <span class="step-dot"></span>
-              <input bind:value={subtask.title} maxlength="240" placeholder="Describe a step" />
+              <input class="field-input" bind:value={subtask.title} maxlength="240" placeholder="Describe a step" />
               <button type="button" aria-label="Remove subtask" on:click={() => removeSubtask(subtask.id)}>
                 <Icon name="x" size={14} />
               </button>
@@ -367,7 +369,7 @@
         </div>
 
         {#if validationMessage}
-          <p class="validation span-2" role="alert">{validationMessage}</p>
+          <p class="field-error span-2" role="alert">{validationMessage}</p>
         {/if}
 
         <footer class="span-2">
@@ -387,7 +389,7 @@
     z-index: 100;
     inset: 0;
     display: grid;
-    padding: 24px;
+    padding: var(--space-6);
     place-items: center;
     background: rgb(2 7 6 / 78%);
     backdrop-filter: blur(5px);
@@ -398,10 +400,9 @@
     max-height: min(860px, calc(100vh - 48px));
     overflow: auto;
     color: var(--text-primary);
-    background: #0d1211;
-    border: 1px solid var(--border-strong);
-    border-radius: 16px;
-    box-shadow: 0 24px 80px rgb(0 0 0 / 50%);
+    background: var(--surface-overlay);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--shadow-sheet);
   }
 
   header {
@@ -411,20 +412,20 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 22px 24px 18px;
-    background: rgb(13 18 17 / 96%);
-    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-5) var(--space-6) var(--space-4);
+    background: var(--surface-overlay);
+    border-bottom: 1px solid var(--separator);
   }
 
   .eyebrow {
     color: var(--accent);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
-  h2 { margin: 4px 0 0; font-size: 21px; letter-spacing: -0.02em; }
+  h2 { margin: 4px 0 0; font-size: var(--text-20); letter-spacing: -0.02em; }
 
   .icon-close,
   .subtask-row button {
@@ -433,167 +434,136 @@
     height: 32px;
     padding: 0;
     place-items: center;
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     background: transparent;
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    padding: 22px 24px 24px;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-6) var(--space-6);
   }
 
   .span-2 { grid-column: 1 / -1; }
-  .field { display: grid; gap: 7px; }
+  .field { display: grid; gap: var(--space-2); }
 
-  .field > span {
-    color: var(--text-secondary);
-    font-size: 10px;
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+  .field-label small {
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+    font-weight: var(--weight-regular);
+    text-transform: none;
+    letter-spacing: 0;
   }
 
-  small { color: var(--text-faint); font-size: 9px; font-weight: 500; }
-
-  input,
-  textarea,
-  select {
-    width: 100%;
-    min-width: 0;
-    padding: 10px 11px;
-    color: var(--text-primary);
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    outline: 0;
+  select.field-input {
+    color-scheme: dark;
   }
-
-  textarea { resize: vertical; }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 
   .subtasks {
-    padding: 14px;
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
+    padding: var(--space-3);
+    background: var(--surface-raised);
+    border-radius: var(--radius-panel);
   }
 
   .weekday-picker {
     min-width: 0;
     margin: 0;
-    padding: 12px 14px 14px;
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius-panel);
   }
 
   .weekday-picker legend {
-    padding: 0 5px;
-    color: var(--text-secondary);
-    font-size: 9px;
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    padding: 0 var(--space-1);
   }
 
   .weekday-picker div {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--space-2);
   }
 
   .weekday-picker button {
     min-height: 32px;
-    color: var(--text-muted);
-    font-size: 9px;
-    font-weight: 650;
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 7px;
+    color: var(--text-tertiary);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    background: var(--surface-raised);
+    border: 1px solid var(--separator-strong);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .weekday-picker button.active {
     color: var(--accent);
-    background: var(--accent-soft);
-    border-color: var(--accent-border);
+    background: var(--accent-fill);
+    border-color: var(--accent-line);
   }
 
   .subtask-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   .subtask-heading div { display: grid; gap: 3px; }
-  .subtask-heading strong { font-size: 12px; }
-  .subtask-heading span { color: var(--text-muted); font-size: 10px; }
+  .subtask-heading strong { font-size: var(--text-12); }
+  .subtask-heading span { color: var(--text-tertiary); font-size: var(--text-11); }
 
   .add-subtask {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 10px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     color: var(--accent);
-    background: var(--accent-soft);
-    border: 1px solid rgb(39 208 145 / 20%);
-    border-radius: 7px;
+    background: var(--accent-fill);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
-  .saved-subtasks { display: grid; gap: 8px; margin-top: 14px; }
-  .saved-subtasks label { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+  .saved-subtasks { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+  .saved-subtasks label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-12); }
   .saved-subtasks input { width: 15px; height: 15px; accent-color: var(--accent); }
-  .saved-subtasks .done { color: var(--text-muted); text-decoration: line-through; }
+  .saved-subtasks .done { color: var(--text-tertiary); text-decoration: line-through; }
 
   .subtask-row {
     display: grid;
     grid-template-columns: 8px minmax(0, 1fr) 32px;
     align-items: center;
-    gap: 9px;
-    margin-top: 10px;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
   }
 
   .step-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
-  .subtask-row input { padding-block: 8px; }
-
-  .validation {
-    margin: -2px 0 0;
-    padding: 9px 11px;
-    color: #ffaaa4;
-    font-size: 11px;
-    background: rgb(255 92 82 / 9%);
-    border: 1px solid rgb(255 92 82 / 18%);
-    border-radius: 8px;
-  }
 
   footer {
     display: flex;
     justify-content: flex-end;
-    gap: 9px;
+    gap: var(--space-2);
     padding-top: 4px;
   }
 
   footer button {
-    padding: 10px 15px;
-    border-radius: 8px;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-control);
     cursor: pointer;
   }
 
   .cancel {
     color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--separator);
   }
 
   .save {
-    color: #04110c;
-    font-weight: 700;
+    color: var(--on-accent);
+    font-weight: var(--weight-semibold);
     background: var(--accent);
     border: 1px solid var(--accent);
   }
