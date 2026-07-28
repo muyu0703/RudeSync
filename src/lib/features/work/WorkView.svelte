@@ -975,7 +975,7 @@
   .project-billing > p {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: var(--text-11);
     background: var(--surface-raised);
     border: 1px dashed var(--separator-strong);
@@ -1402,7 +1402,7 @@
 
   .side-empty {
     margin: 2px var(--space-2) var(--space-2);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: var(--text-12);
     line-height: 1.55;
   }
