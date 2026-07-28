@@ -946,7 +946,13 @@
           {#if upcomingTasks.length}
             <div class="task-list">
               {#each upcomingTasks.slice(0, 5) as task (task.id)}
-                <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                <div
+                  class="task-row-outro"
+                  out:fade={{ duration: motionDuration(180) }}
+                  animate:flip={{ duration: motionDuration(180) }}
+                >
+                  <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
+                </div>
               {/each}
             </div>
           {:else}
