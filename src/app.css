@@ -239,27 +239,6 @@ kbd { font-variant-numeric: tabular-nums; }
 .nav-item.active .nav-count { color: var(--accent); background: var(--accent-fill); }
 
 .sidebar-spacer { flex: 1; }
-.sidebar-callout {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-  padding: var(--space-2);
-  background: var(--surface-hover);
-  border-radius: var(--radius-panel);
-}
-.callout-icon {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 auto;
-  place-items: center;
-  color: var(--accent);
-  border-radius: var(--radius-control);
-}
-.sidebar-callout > div:last-child { display: flex; min-width: 0; flex-direction: column; }
-.sidebar-callout strong { color: var(--text-primary); font-size: var(--text-12); font-weight: var(--weight-medium); }
-.sidebar-callout span { color: var(--text-tertiary); font-size: var(--text-11); }
 
 .sidebar-footer { display: grid; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--separator); }
 .local-status {
@@ -329,7 +308,7 @@ kbd {
   border-radius: var(--radius-control);
 }
 
-.icon-button, .avatar {
+.icon-button {
   display: grid;
   width: 28px;
   height: 28px;
@@ -342,22 +321,6 @@ kbd {
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 .icon-button:hover { color: var(--text-primary); background: var(--surface-hover); }
-.notification-button { position: relative; }
-.notification-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 5px;
-  height: 5px;
-  background: var(--accent);
-  border-radius: 50%;
-}
-.avatar {
-  color: var(--on-accent);
-  font-size: var(--text-11);
-  font-weight: var(--weight-semibold);
-  background: var(--accent);
-}
 
 .error-banner, .backup-warning {
   display: flex;
@@ -406,13 +369,6 @@ kbd {
 /* =============================================================
    Today
    ============================================================= */
-
-/* Reserved for Cycle 2. Renders as a quiet empty region, never a broken chart. */
-.chart-slot {
-  height: 96px;
-  border: 1px dashed var(--separator-strong);
-  border-radius: var(--radius-control);
-}
 
 .quick-add {
   display: grid;
@@ -696,16 +652,9 @@ kbd {
 }
 .inline-search input { width: 100%; font-size: var(--text-12); }
 
-/* Single-card and two-card rows on the Review screen, sharing the same
-   1120px measure as the stat row above them. */
+/* Single-card row on the Review screen, sharing the same 1120px measure as
+   the stat row above it. */
 .review-grid { max-width: 1120px; margin: 0 auto var(--space-4); }
-.review-charts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-  max-width: 1120px;
-  margin: 0 auto var(--space-4);
-}
 
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); max-width: 1120px; margin: 0 auto; }
 
@@ -792,10 +741,9 @@ kbd {
 @media (max-width: 1020px) {
   :root { --sidebar-width: 60px; }
   .brand-copy, .nav-label, .nav-text, .nav-count,
-  .sidebar-callout > div:last-child, .local-status span:last-child { display: none; }
+  .local-status span:last-child { display: none; }
   .brand, .nav-item, .local-status { justify-content: center; }
   .nav-item { grid-template-columns: 1fr; padding: 0; place-items: center; }
-  .sidebar-callout { justify-content: center; padding: var(--space-1); }
   .today-grid { grid-template-columns: 1fr; }
   .side-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .upcoming-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -807,7 +755,7 @@ kbd {
   .search-trigger span, .search-trigger kbd { display: none; }
   .quick-hint { display: none; }
   .quick-add { grid-template-columns: 20px minmax(0, 1fr) auto; }
-  .settings-grid, .review-charts { grid-template-columns: 1fr; }
+  .settings-grid { grid-template-columns: 1fr; }
   .upcoming-strip { grid-template-columns: 1fr; }
 }
 

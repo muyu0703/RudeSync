@@ -484,7 +484,19 @@
     };
     const invoke =
       tauri.__TAURI_INTERNALS__?.invoke ?? tauri.__TAURI__?.core?.invoke;
-    if (invoke) await invoke("show_task_widget");
+    if (!invoke) {
+      errorMessage = "The task widget is only available in the desktop app.";
+      return;
+    }
+    errorMessage = "";
+    try {
+      await invoke("show_task_widget");
+    } catch (error) {
+      errorMessage =
+        error instanceof Error
+          ? error.message
+          : "The task widget could not be opened.";
+    }
   }
 
   async function saveTask(event: CustomEvent<TaskDialogSaveDetail>): Promise<void> {
@@ -642,13 +654,11 @@
         <h1>{sectionCopy[active].title}</h1>
       </div>
       <div class="topbar-actions">
-        <button class="search-trigger" type="button" on:click={openSearch}>
-          <Icon name="search" size={15} /><span>Search</span><kbd>Ctrl K</kbd>
-        </button>
-        <button class="icon-button notification-button" type="button" aria-label="Notifications">
-          <Icon name="bell" size={17} /><span class="notification-dot"></span>
-        </button>
-        <button class="avatar" type="button" aria-label="Open profile">RS</button>
+        {#if active === "today" || active === "tasks"}
+          <button class="search-trigger" type="button" on:click={openSearch}>
+            <Icon name="search" size={15} /><span>Find task</span><kbd>Ctrl K</kbd>
+          </button>
+        {/if}
       </div>
     </header>
 
@@ -814,11 +824,6 @@
                 <div class="empty-inline">No invoice or personal-loan payments need attention.</div>
               {/if}
             </Card>
-
-            <Card>
-              <SectionHeader slot="header" title="Earnings trend" />
-              <div class="chart-slot" aria-hidden="true"></div>
-            </Card>
           </aside>
         </div>
 
@@ -856,6 +861,7 @@
             <button
               class="primary-button"
               type="button"
+              disabled={!settingsService.isDesktop}
               on:click={() => void openTaskWidget()}
             ><Icon name="spark" size={15} /> Pop out widget</button>
           </div>
@@ -944,17 +950,6 @@
               valueText={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
               tone="positive"
             />
-          </Card>
-        </div>
-
-        <div class="review-charts">
-          <Card>
-            <SectionHeader slot="header" title="Completion trend" />
-            <div class="chart-slot" aria-hidden="true"></div>
-          </Card>
-          <Card>
-            <SectionHeader slot="header" title="Earnings by month" />
-            <div class="chart-slot" aria-hidden="true"></div>
           </Card>
         </div>
 

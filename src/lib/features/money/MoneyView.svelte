@@ -1191,11 +1191,6 @@
         </form>
       {/if}
 
-      <Card>
-        <SectionHeader slot="header" title="Invoiced vs received" />
-        <div class="chart-slot" aria-hidden="true"></div>
-      </Card>
-
       {#if loading}
         <div class="loading-state" aria-live="polite">Loading invoices…</div>
       {:else if !projects.length && !invoices.length}

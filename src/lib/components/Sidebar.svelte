@@ -54,14 +54,6 @@
 
   <div class="sidebar-spacer"></div>
 
-  <div class="sidebar-callout">
-    <div class="callout-icon"><Icon name="spark" size={15} /></div>
-    <div>
-      <strong>Weekly reset</strong>
-      <span>Friday · 4:00 PM</span>
-    </div>
-  </div>
-
   <div class="sidebar-footer">
     <button
       class:active={active === "settings"}
