@@ -646,7 +646,7 @@
 
 <style>
   .settings-view {
-    width: min(100%, 1000px);
+    width: min(100%, 1120px);
     margin: 0 auto;
   }
 
