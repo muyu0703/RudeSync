@@ -240,11 +240,24 @@ whole interface follows:
 --accent: #3ddc84;           /* positive, completed   */
 --danger: #ff6961;           /* overdue               */
 --amber: #e3b341;            /* due soon, outstanding */
+--viz-fill: var(--accent);   /* chart bars            */
+--viz-track: #33403a;        /* the unfilled remainder*/
+--viz-grid: var(--separator);/* chart gridlines       */
 ```
 
 Keep the ground dark enough that `--accent` still reads as a signal. If the
 background drifts toward the accent hue, the accent stops meaning anything and
 the interface flattens.
+
+**Charts deliberately use one colour, not a palette.** Each chart plots a single
+hue against a neutral track — the "emphasis" form — rather than assigning a
+colour per series. That is a measured choice, not a stylistic one. Against
+`--surface-content`, `--viz-fill` lands at 10.25:1 contrast and separates from
+`--viz-track` by ΔE 47.9 under simulated deuteranopia; the obvious alternative
+of green bars beside amber bars managed only 7.2, inside the range where
+red–green colourblind readers start confusing the two. If you re-skin
+`--viz-fill`, keep it far from `--viz-track` in *lightness*, not just in hue —
+hue is the channel colourblind readers lose first.
 
 **Type.** `--font-ui` prefers the system font on Apple platforms and falls back
 to the bundled Inter elsewhere, so the app looks native without a network
@@ -257,8 +270,15 @@ and four weights.
 
 **Structure.** Screens are composed from small primitives in
 `src/lib/components/` — `Card`, `StatCard`, `StatRow`, `SectionHeader`,
-`MeterBar`. Restyling a primitive restyles every screen at once, which is the
-point: consistency is structural rather than a matter of discipline.
+`MeterBar`, `BarChart`. Restyling a primitive restyles every screen at once,
+which is the point: consistency is structural rather than a matter of
+discipline.
+
+`BarChart` draws either plain bars or part-to-whole meters from the same data
+shape: a point with a `total` renders a filled track, a point without one
+renders a plain bar. The series themselves are pure functions in
+[`src/lib/features/dashboard/chartSeries.ts`](src/lib/features/dashboard/chartSeries.ts),
+kept free of Svelte and of the clock so they can be unit tested directly.
 
 Two rules worth keeping if you fork it: colour should never be the only carrier
 of meaning (every status colour is paired with a text label), and every

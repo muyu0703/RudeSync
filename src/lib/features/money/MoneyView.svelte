@@ -13,6 +13,7 @@
   } from "../../domain/money.ts";
   import { addDays, addMonthsClamped } from "../../domain/date.ts";
   import { generateLoanDueDates } from "../../domain/loan-schedule.ts";
+  import BarChart from "../../components/BarChart.svelte";
   import Card from "../../components/Card.svelte";
   import Icon from "../../components/Icon.svelte";
   import SectionHeader from "../../components/SectionHeader.svelte";
@@ -24,6 +25,10 @@
     receivedInMonth,
     type CurrencyAmount,
   } from "../dashboard/stats.ts";
+  import {
+    billingByMonth,
+    invoiceCurrencies,
+  } from "../dashboard/chartSeries.ts";
   import { createSettingsService } from "../settings/settingsService";
   import {
     createMoneyService,
@@ -142,6 +147,17 @@
   $: moneyOutstanding = outstandingByCurrency(invoices);
   $: moneyReceived = receivedInMonth(invoices, today);
   $: overdueInvoices = overdueInvoiceCount(invoices, today);
+
+  // A currency is a separate dataset, not a filter: totals are never summed
+  // across currencies, so the chart plots exactly one at a time.
+  let chartCurrency = "";
+  $: chartCurrencies = invoiceCurrencies(invoices);
+  $: if (chartCurrencies.length && !chartCurrencies.includes(chartCurrency)) {
+    chartCurrency = chartCurrencies[0];
+  }
+  $: billingTrend = chartCurrency
+    ? billingByMonth(invoices, chartCurrency, today, 6)
+    : [];
   $: earningsSubtext = earningGroups.length
     ? `All-time collected · ${earningGroups
         .map((group) => formatMoney(group.total, group.currency))
@@ -285,6 +301,20 @@
 
   function minorInput(amount: number): string {
     return (amount / 100).toFixed(2);
+  }
+
+  /** Axis ticks need to fit in a narrow gutter, so they compact: $12.5K. */
+  function formatMoneyCompact(amount: number, currency = "USD"): string {
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(amount / 100);
+    } catch {
+      return `${currency} ${Math.round(amount / 100)}`;
+    }
   }
 
   function formatMoney(amount: number, currency = "USD"): string {
@@ -1410,6 +1440,44 @@
       aria-labelledby="money-tab-earnings"
       class="tab-panel"
     >
+      <Card>
+        <SectionHeader
+          slot="header"
+          title="Billed vs collected"
+          subtext={chartCurrency
+            ? `By invoice month · last 6 months · ${chartCurrency}`
+            : "By invoice month · last 6 months"}
+        >
+          <svelte:fragment slot="actions">
+            {#if chartCurrencies.length > 1}
+              <div class="segmented" aria-label="Chart currency">
+                {#each chartCurrencies as code (code)}
+                  <button
+                    type="button"
+                    class:active={chartCurrency === code}
+                    aria-pressed={chartCurrency === code}
+                    on:click={() => (chartCurrency = code)}
+                  >{code}</button>
+                {/each}
+              </div>
+            {/if}
+          </svelte:fragment>
+        </SectionHeader>
+        <!-- A payment banked this month may settle an older invoice, so each
+             bar is one issue-month cohort: the track is what that month
+             billed, the fill is how much of it has since come in. -->
+        <BarChart
+          points={billingTrend}
+          valueLabel="Collected"
+          totalLabel="Billed"
+          formatValue={(value) => formatMoney(value, chartCurrency)}
+          formatAxis={(value) => formatMoneyCompact(value, chartCurrency)}
+          tableCaption={`Billed and collected per invoice month in ${chartCurrency}`}
+          emptyMessage="No issued invoices in the last six months."
+          loading={loading}
+        />
+      </Card>
+
       <Card>
         <SectionHeader
           slot="header"
