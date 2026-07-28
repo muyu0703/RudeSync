@@ -896,6 +896,7 @@
               value={completedThisWeek.length}
               max={weeklyProgressTotal}
               detail={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
+              valueText={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
               tone="positive"
             />
           </Card>

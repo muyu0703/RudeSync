@@ -4,6 +4,11 @@
   export let max: number;
   export let detail: string | null = null;
   export let tone: "neutral" | "positive" | "warning" | "danger" = "positive";
+  // Only set this when `detail` restates the value itself (e.g. "2 of 7 done",
+  // "Paid"). aria-valuetext REPLACES the spoken percentage, so a detail that
+  // describes something else (e.g. a complement like "3 still open") must not
+  // be wired in here.
+  export let valueText: string | null = null;
 
   $: percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   // A progressbar whose max equals its min is invalid, and an empty day or week
@@ -23,7 +28,7 @@
     aria-valuenow={value}
     aria-valuemin={0}
     aria-valuemax={valueMax}
-    aria-valuetext={detail ?? undefined}
+    aria-valuetext={valueText ?? undefined}
   >
     <i style={`width:${percent}%`}></i>
   </div>

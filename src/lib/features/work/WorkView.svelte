@@ -540,6 +540,7 @@
                     value={milestoneEffectiveStatus(milestone) === "not-invoiced" ? 0 : 1}
                     max={1}
                     detail={milestoneStatusLabel(milestoneEffectiveStatus(milestone))}
+                    valueText={milestoneStatusLabel(milestoneEffectiveStatus(milestone))}
                     tone={milestoneEffectiveStatus(milestone) === "paid"
                       ? "positive"
                       : milestoneEffectiveStatus(milestone) === "invoiced"
