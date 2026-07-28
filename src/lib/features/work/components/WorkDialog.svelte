@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { cubicOut } from "svelte/easing";
-  import { fade, scale } from "svelte/transition";
+  import { scale } from "svelte/transition";
+  import { motionDuration } from "../../../motion";
 
   export let title: string;
   export let description = "";
@@ -34,12 +35,21 @@
   aria-describedby={description ? "work-dialog-description" : undefined}
   on:cancel|preventDefault={close}
   on:click={handleBackdrop}
-  transition:fade={{ duration: 140 }}
 >
+  <!--
+    No transition on the <dialog> root: its visible scrim is the native
+    ::backdrop pseudo-element (styled below), which Svelte cannot animate,
+    and `dialog { background: transparent }` makes a fade on the root itself
+    invisible.
+
+    No out:transition on .dialog-card either: every close path calls the
+    native dialog.close() synchronously, which strips the `open` attribute
+    and lets the UA stylesheet (`dialog:not([open]) { display: none }`) hide
+    the element before an outro could render, so it would just be dead code.
+  -->
   <section
     class="dialog-card"
-    in:scale={{ duration: 200, start: 0.96, opacity: 0, easing: cubicOut }}
-    out:scale={{ duration: 140, start: 0.98, opacity: 0, easing: cubicOut }}
+    in:scale={{ duration: motionDuration(200), start: 0.96, opacity: 0, easing: cubicOut }}
   >
     <header>
       <div>
