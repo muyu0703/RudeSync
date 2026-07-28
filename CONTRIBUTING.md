@@ -61,6 +61,28 @@ Rules the codebase enforces:
   (`Card`, `StatCard`, `StatRow`, `SectionHeader`, `MeterBar`). Reach for those
   before writing new layout CSS.
 
+## Charts
+
+Charts are built from `BarChart` plus a pure series function in
+`src/lib/features/dashboard/chartSeries.ts`. Four rules hold:
+
+- **One hue, never a palette.** Charts use the emphasis form — a single fill
+  against a neutral track. Adding a second series colour means re-validating
+  the pair for colourblind separation, not picking something that looks nice.
+  See [Customising](README.md#customising) for the measured numbers.
+- **Every value is reachable without hover.** The plot itself is
+  `aria-hidden`; the `<details>` table below it is the accessible
+  representation. A tooltip may enhance, never gate.
+- **Bucket with the same resolver as the surrounding view.** `completionsByDay`
+  takes the day resolver as an argument because Today and Review bucket by
+  *local* day. Pass the wrong one and, east of UTC, a task finished at 07:00
+  lands on the previous bar and the chart contradicts the meter beside it.
+- **Never sum across currencies.** A money chart plots exactly one currency and
+  says which one in its subtitle.
+
+Series functions must stay free of Svelte and of `Date.now()` so they can be
+tested directly under `tests/dashboard/`.
+
 ## Motion
 
 Animations use Svelte's built-in transitions, and **every duration must be

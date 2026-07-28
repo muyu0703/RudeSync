@@ -3,6 +3,7 @@
   import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
   import { fade, scale } from "svelte/transition";
+  import BarChart from "./lib/components/BarChart.svelte";
   import Card from "./lib/components/Card.svelte";
   import Icon from "./lib/components/Icon.svelte";
   import MeterBar from "./lib/components/MeterBar.svelte";
@@ -59,6 +60,7 @@
     outstandingByCurrency,
     receivedInMonth,
   } from "./lib/features/dashboard/stats.ts";
+  import { completionsByDay } from "./lib/features/dashboard/chartSeries.ts";
 
   type TaskFilter =
     | "all"
@@ -177,6 +179,10 @@
   $: statOverdue = overdueTaskCount(tasks, todayIso) + overdueInvoiceCount(reviewInvoices, todayIso);
   $: statOutstanding = outstandingByCurrency(reviewInvoices);
   $: statReceived = receivedInMonth(reviewInvoices, todayIso);
+  // Both charts bucket by local day via the same resolver `completedToday` and
+  // `completedThisWeek` use, so a bar can never contradict the meter beside it.
+  $: completionTrend = completionsByDay(tasks, todayIso, 14, localDayFromTimestamp);
+  $: reviewTrend = completionsByDay(tasks, todayIso, 7, localDayFromTimestamp);
   $: filteredTasks = tasks
     .filter((task) => {
       if (taskFilter === "today") return todayTasks.some((item) => item.id === task.id);
@@ -836,6 +842,24 @@
           </aside>
         </div>
 
+        <div class="chart-panel">
+          <Card>
+            <SectionHeader
+              slot="header"
+              title="Completed"
+              subtext="Tasks finished each day, last 14 days"
+            />
+            <BarChart
+              points={completionTrend}
+              valueLabel="Completed"
+              labelEvery={2}
+              tableCaption="Tasks completed each day over the last 14 days"
+              emptyMessage="No tasks completed in the last 14 days yet."
+              loading={loading}
+            />
+          </Card>
+        </div>
+
         <div class="upcoming-panel">
           <Card padded={false}>
             <SectionHeader slot="header" title="Upcoming" subtext="Next seven days">
@@ -958,6 +982,21 @@
               detail={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
               valueText={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
               tone="positive"
+            />
+          </Card>
+
+          <Card>
+            <SectionHeader
+              slot="header"
+              title="Daily rhythm"
+              subtext="Tasks finished each day, last 7 days"
+            />
+            <BarChart
+              points={reviewTrend}
+              valueLabel="Completed"
+              tableCaption="Tasks completed each day over the last 7 days"
+              emptyMessage="No tasks completed in the last 7 days yet."
+              loading={loading}
             />
           </Card>
         </div>
