@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { slide } from "svelte/transition";
+  import { motionDuration } from "../../motion";
   import {
     calculateInvoiceDueDate,
     type InvoiceDueTerm,
@@ -1099,7 +1101,7 @@
               </select>
             </label>
             {#if invoiceDiscountKind !== "none"}
-              <label>
+              <label transition:slide={{ duration: motionDuration(180) }}>
                 <span>{invoiceDiscountKind === "fixed" ? "Discount amount" : "Discount %"}</span>
                 <input bind:value={invoiceDiscountValue} inputmode="decimal" required />
               </label>
@@ -1192,7 +1194,11 @@
               </div>
 
               {#if paymentInvoiceId === invoice.id}
-                <form class="payment-form" on:submit|preventDefault={savePayment}>
+                <form
+                  class="payment-form"
+                  on:submit|preventDefault={savePayment}
+                  transition:slide={{ duration: motionDuration(180) }}
+                >
                   <label><span>Payment amount</span><input bind:value={paymentAmount} inputmode="decimal" required /></label>
                   <label><span>Received date</span><input type="date" bind:value={paymentDate} required /></label>
                   <label class="grow"><span>Note / reference</span><input bind:value={paymentNote} placeholder="Optional" /></label>
@@ -1296,7 +1302,7 @@
           </div>
 
           {#if loanFrequency === "custom"}
-            <fieldset class="custom-dates">
+            <fieldset class="custom-dates" transition:slide={{ duration: motionDuration(180) }}>
               <legend>Custom due dates</legend>
               {#each loanScheduleDates as date, index}
                 <div>
@@ -1316,7 +1322,7 @@
           </div>
 
           {#if loanScheduleDates.length && !scheduleIsStale}
-            <div class="schedule-preview">
+            <div class="schedule-preview" transition:slide={{ duration: motionDuration(180) }}>
               <div><strong>{loanScheduleDates.length} installments</strong><span>First: {formatDate(loanScheduleDates[0])} · Last: {formatDate(loanScheduleDates[loanScheduleDates.length - 1] ?? "")}</span></div>
               <ol>
                 {#each loanScheduleDates as date, index}

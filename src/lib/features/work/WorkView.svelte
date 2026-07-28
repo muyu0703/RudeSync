@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { slide } from "svelte/transition";
+  import { motionDuration } from "../../motion";
   import Card from "../../components/Card.svelte";
   import Icon from "../../components/Icon.svelte";
   import MeterBar from "../../components/MeterBar.svelte";
@@ -556,7 +558,7 @@
                   <b>{projectInvoices.length} {projectInvoices.length === 1 ? "invoice" : "invoices"}</b>
                 </header>
                 {#if projectInvoices.length}
-                  <div class="invoice-list">
+                  <div class="invoice-list" transition:slide={{ duration: motionDuration(180) }}>
                     {#each projectInvoices as invoice (invoice.id)}
                       {@const totals = invoiceTotals(invoice)}
                       <article class="invoice-record">
@@ -579,7 +581,11 @@
                           </div>
                         </div>
                         {#if invoice.payments.length}
-                          <div class="invoice-payments" aria-label={`${invoice.number} payments`}>
+                          <div
+                            class="invoice-payments"
+                            aria-label={`${invoice.number} payments`}
+                            transition:slide={{ duration: motionDuration(180) }}
+                          >
                             {#each invoice.payments as payment, index (payment.id)}
                               <div>
                                 <span class="payment-check"><Icon name="check" size={10} strokeWidth={2.3} /></span>
@@ -594,12 +600,12 @@
                     {/each}
                   </div>
                 {:else}
-                  <p>No invoices are attached to this project yet.</p>
+                  <p transition:slide={{ duration: motionDuration(180) }}>No invoices are attached to this project yet.</p>
                 {/if}
               </section>
 
               {#if projectWork.length}
-                <div class="project-work">
+                <div class="project-work" transition:slide={{ duration: motionDuration(180) }}>
                   <span class="group-label">Recent completed work</span>
                   {#each projectWork.slice(0, 2) as entry (entry.id)}
                     <div class="mini-work-entry">
