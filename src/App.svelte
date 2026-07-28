@@ -175,7 +175,9 @@
       .map((installment) => ({ loan, installment })),
   );
   $: statOpen = openTaskCount(tasks);
-  $: statDoneToday = completedTodayCount(tasks, todayIso);
+  // Same local-day resolver as `completedToday` below, so the stat card and
+  // the progress meter can never report different counts for the same day.
+  $: statDoneToday = completedTodayCount(tasks, todayIso, localDayFromTimestamp);
   $: statOverdue = overdueTaskCount(tasks, todayIso) + overdueInvoiceCount(reviewInvoices, todayIso);
   $: statOutstanding = outstandingByCurrency(reviewInvoices);
   $: statReceived = receivedInMonth(reviewInvoices, todayIso);

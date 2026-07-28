@@ -13,3 +13,28 @@ body {
 #widget {
   height: 100vh;
 }
+
+/* The widget is a separate webview and does not load app.css, so it needs its
+   own copy of the motion gates. `applyMotionPreference()` in the widget entry
+   stamps data-motion on <html> from the same stored preference the main window
+   uses. Without these rules the widget honoured neither the OS setting nor the
+   in-app override. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

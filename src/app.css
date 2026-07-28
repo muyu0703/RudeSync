@@ -782,11 +782,30 @@ kbd {
   .upcoming-strip { grid-template-columns: 1fr; }
 }
 
+/* Motion has two gates. Svelte transitions run through `motionDuration()` in
+   src/lib/motion.ts; CSS transitions and animations are gated here. Both must
+   agree, so `applyMotionPreference()` mirrors the Settings choice onto <html>
+   as data-motion and these rules read it.
+
+   The OS request — unless this device has explicitly asked for motion back. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Settings → Appearance → Off. Suppresses motion whatever the OS says, which
+   a media query on its own cannot express. */
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }

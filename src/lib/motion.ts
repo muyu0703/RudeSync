@@ -45,13 +45,39 @@ export function getMotionPreference(): MotionPreference {
   }
 }
 
-/** Persists the motion preference for this device. */
+/**
+ * Mirrors the resolved preference onto `<html>` as `data-motion`, so the
+ * stylesheet can honour it too.
+ *
+ * `motionDuration()` covers Svelte transitions, but CSS `transition` and
+ * `animation` declarations are gated only by
+ * `@media (prefers-reduced-motion: reduce)` — a media query that can see the
+ * OS setting and nothing else. Without this attribute, choosing "Off" in
+ * Settings silently left every CSS transition running, and choosing "Always
+ * on" could not re-enable them for someone whose OS requests reduced motion.
+ *
+ * `"system"` removes the attribute entirely rather than writing a value, so
+ * the media query alone decides — which is exactly what "follow system" means.
+ */
+export function applyMotionPreference(
+  preference: MotionPreference = getMotionPreference(),
+): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (preference === "always") root.dataset.motion = "full";
+  else if (preference === "reduced") root.dataset.motion = "reduced";
+  else delete root.dataset.motion;
+}
+
+/** Persists the motion preference for this device and applies it immediately. */
 export function setMotionPreference(value: MotionPreference): void {
   try {
     localStorage.setItem(STORAGE_KEY, value);
   } catch {
     // Storage unavailable — the preference simply won't survive a reload.
   }
+  // Applied even when persistence failed, so the current session still obeys.
+  applyMotionPreference(value);
 }
 
 /**

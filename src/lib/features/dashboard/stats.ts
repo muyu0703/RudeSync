@@ -37,11 +37,29 @@ export function openTaskCount(tasks: Task[]): number {
   return tasks.filter((task) => task.status !== "completed").length;
 }
 
-export function completedTodayCount(tasks: Task[], today: string): number {
+/** Default day resolver: the UTC date already embedded in the timestamp. */
+const utcDay = (timestamp: string): string => timestamp.slice(0, 10);
+
+/**
+ * How many tasks were completed on `today`.
+ *
+ * `dayOf` decides which calendar day a completion belongs to, and callers must
+ * pass the same resolver the surrounding view uses. `completedAt` is a UTC
+ * timestamp, so east of UTC a task finished at 07:00 local carries a
+ * previous-day stamp: the default resolver would drop it from today's count
+ * while the Today progress meter — which buckets by local day — still counts
+ * it, and the same screen would show two different numbers for "done today".
+ */
+export function completedTodayCount(
+  tasks: Task[],
+  today: string,
+  dayOf: (timestamp: string) => string = utcDay,
+): number {
   return tasks.filter(
     (task) =>
       task.status === "completed" &&
-      (task.completedAt ?? "").slice(0, 10) === today,
+      task.completedAt !== null &&
+      dayOf(task.completedAt) === today,
   ).length;
 }
 
