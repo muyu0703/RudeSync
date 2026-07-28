@@ -919,7 +919,7 @@
     color: var(--accent);
     font-size: var(--text-11);
     background: var(--accent-fill);
-    border-radius: 5px;
+    border-radius: var(--radius-control);
     text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1009,7 +1009,7 @@
     place-items: center;
     color: var(--accent);
     background: var(--accent-fill);
-    border-radius: 7px;
+    border-radius: var(--radius-control);
   }
 
   .invoice-copy {
@@ -1375,7 +1375,7 @@
     color: var(--accent);
     font-size: var(--text-11);
     background: var(--accent-fill);
-    border-radius: 4px;
+    border-radius: var(--radius-control);
     text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;

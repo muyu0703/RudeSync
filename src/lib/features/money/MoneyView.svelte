@@ -1511,7 +1511,7 @@
   .payment-form input { min-height: 32px; padding: 6px 8px; }
   .payment-list { display: grid; gap: var(--space-2); }
   .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); background: var(--surface-content); padding: 11px 13px; font-size: 11px; }
-  .payment-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--accent); background: var(--accent-fill); }
+  .payment-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--accent); background: var(--accent-fill); }
   .payment-list div { display: flex; flex-direction: column; gap: 2px; }
   .payment-list small, .payment-list time { color: var(--text-tertiary); }
   .payment-list > article > b { text-align: right; color: var(--accent); }
@@ -1524,12 +1524,12 @@
   .schedule-preview > div { display: flex; justify-content: space-between; color: var(--text-tertiary); font-size: var(--text-11); }
   .schedule-preview > div strong { color: var(--text-primary); }
   .schedule-preview ol { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 190px; overflow: auto; margin: 10px 0 0; padding: 0; }
-  .schedule-preview li { display: flex; gap: 7px; align-items: center; border: 1px solid var(--separator); border-radius: 5px; padding: 6px; font-size: var(--text-11); }
+  .schedule-preview li { display: flex; gap: 7px; align-items: center; border: 1px solid var(--separator); border-radius: var(--radius-control); padding: 6px; font-size: var(--text-11); }
   .schedule-preview li span { color: var(--accent); font-family: var(--font-mono); }
   .loan-card { overflow: hidden; }
   .loan-card summary { list-style: none; display: grid; grid-template-columns: 32px minmax(220px, 1fr) 160px 50px; align-items: center; gap: 11px; cursor: pointer; padding: 13px 14px; }
   .loan-card summary::-webkit-details-marker { display: none; }
-  .loan-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; color: var(--amber); background: var(--amber-fill); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
+  .loan-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--amber); background: var(--amber-fill); font-weight: var(--weight-bold); font-size: var(--text-11); font-family: var(--font-mono); }
   .loan-card summary div { display: flex; flex-direction: column; gap: 3px; }
   .loan-card summary small, .loan-next span { color: var(--text-tertiary); font-size: var(--text-11); }
   .loan-card summary > b { color: var(--accent); font-size: 12px; text-align: right; }
