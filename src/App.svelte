@@ -8,6 +8,7 @@
   import StatCard from "./lib/components/StatCard.svelte";
   import StatRow from "./lib/components/StatRow.svelte";
   import TaskRow from "./lib/components/TaskRow.svelte";
+  import { addDays } from "./lib/domain/date.ts";
   import MoneyView from "./lib/features/money/MoneyView.svelte";
   import { handleInvoiceExport as exportInvoice } from "./lib/features/money/invoiceExport";
   import {
@@ -139,30 +140,14 @@
   });
   $: todayProgressTotal = todayTasks.length + completedToday.length;
   $: weeklyProgressTotal = weeklyOpenTasks.length + completedThisWeek.length;
-  $: completedWorkThisWeek = reviewWorkEntries.filter(
-    (entry) => entry.workDate >= weekStartIso && entry.workDate <= weekEndIso,
-  );
-  $: paymentsThisWeek = reviewInvoices.flatMap((invoice) =>
-    invoice.payments
-      .filter(
-        (payment) =>
-          payment.receivedDate >= weekStartIso &&
-          payment.receivedDate <= weekEndIso,
-      )
-      .map((payment) => ({
-        currency: invoice.currency,
-        amountMinor: payment.amountMinor,
-      })),
-  );
-  $: collectedThisWeek = collectedSummary(paymentsThisWeek);
-  $: loanInstallmentsPaidThisWeek = reviewLoans.flatMap((loan) =>
-    loan.installments.filter(
+  $: upcomingInstallmentCount = reviewLoans
+    .flatMap((loan) => loan.installments)
+    .filter(
       (installment) =>
-        !!installment.paidDate &&
-        installment.paidDate >= weekStartIso &&
-        installment.paidDate <= weekEndIso,
-    ),
-  );
+        !installment.paid &&
+        installment.dueDate >= todayIso &&
+        installment.dueDate <= addDays(todayIso, 30),
+    ).length;
   $: actionableInvoiceDues = reviewInvoices.filter((invoice) => {
     const status = invoice.status.replace("-", "_");
     return (
@@ -260,32 +245,6 @@
     sevenDaysIso = dateUtils.shiftDay(7);
     weekStartIso = currentWeekBoundary("start");
     weekEndIso = currentWeekBoundary("end");
-  }
-
-  function collectedSummary(
-    values: Array<{ currency: string; amountMinor: number }>,
-  ): string {
-    const byCurrency = new Map<string, number>();
-    for (const value of values) {
-      byCurrency.set(
-        value.currency,
-        (byCurrency.get(value.currency) ?? 0) + value.amountMinor,
-      );
-    }
-    if (!byCurrency.size) return "$0 USD";
-    return [...byCurrency]
-      .map(([currency, amountMinor]) => {
-        try {
-          return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency,
-            maximumFractionDigits: 2,
-          }).format(amountMinor / 100);
-        } catch {
-          return `${currency} ${(amountMinor / 100).toFixed(2)}`;
-        }
-      })
-      .join(" · ");
   }
 
   function formatMoney(minor: number, currency: string): string {
@@ -902,22 +861,49 @@
       {:else if active === "money"}
         <MoneyView on:exportInvoice={handleInvoiceExport} />
       {:else if active === "review"}
-        <section class="review-hero panel">
-          <div>
-            <span class="panel-kicker">This week</span><h2>{completedThisWeek.length} things moved forward.</h2>
-            <p>RudeSync keeps completed work, collected earnings, and paid loan installments separate so your review stays honest.</p>
-          </div>
-          <div class="review-score">
-            <strong>{weeklyProgressTotal ? Math.round((completedThisWeek.length / weeklyProgressTotal) * 100) : 0}%</strong>
-            <span>task completion</span>
-          </div>
-        </section>
-        <section class="summary-grid four">
-          <article class="summary-card"><span>Tasks done</span><strong>{completedThisWeek.length}</strong><small>This week</small></article>
-          <article class="summary-card"><span>Work records</span><strong>{completedWorkThisWeek.length}</strong><small>Logged</small></article>
-          <article class="summary-card"><span>Collected</span><strong>{collectedThisWeek}</strong><small>Received payments</small></article>
-          <article class="summary-card"><span>Loan dues paid</span><strong>{loanInstallmentsPaidThisWeek.length}</strong><small>This week</small></article>
-        </section>
+        <StatRow>
+          <StatCard icon="check" label="Tasks done" value={String(completedThisWeek.length)} detail="This week" tone="positive" />
+          <StatCard icon="work" label="Work recorded" value={String(reviewWorkEntries.length)} detail="Entries logged" tone="neutral" />
+          <StatCard
+            icon="arrow-up-right"
+            label="Received"
+            value={statReceived.length ? formatStatMoney(statReceived[0]) : "None"}
+            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "This month"}
+            tone={statReceived.length ? "positive" : "neutral"}
+          />
+          <StatCard
+            icon="loan"
+            label="Loan payments due"
+            value={String(upcomingInstallmentCount)}
+            detail="Next 30 days"
+            tone={upcomingInstallmentCount > 0 ? "warning" : "neutral"}
+          />
+        </StatRow>
+
+        <div class="review-grid">
+          <Card>
+            <SectionHeader slot="header" title="This week" subtext="Task completion" />
+            <MeterBar
+              label="Weekly progress"
+              value={completedThisWeek.length}
+              max={weeklyProgressTotal}
+              detail={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
+              tone="positive"
+            />
+          </Card>
+        </div>
+
+        <div class="review-charts">
+          <Card>
+            <SectionHeader slot="header" title="Completion trend" />
+            <div class="chart-slot" aria-hidden="true"></div>
+          </Card>
+          <Card>
+            <SectionHeader slot="header" title="Earnings by month" />
+            <div class="chart-slot" aria-hidden="true"></div>
+          </Card>
+        </div>
+
         <section class="panel full-panel">
           <div class="panel-header">
             <div><span class="panel-kicker">Next-week planning</span><h3>Upcoming tasks</h3></div>
