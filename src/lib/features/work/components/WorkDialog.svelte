@@ -65,6 +65,7 @@
       </button>
     </header>
     <div class="dialog-body"><slot /></div>
+    <div class="dialog-footer"><slot name="footer" /></div>
   </section>
 </dialog>
 
@@ -88,6 +89,8 @@
   }
 
   .dialog-card {
+    display: flex;
+    flex-direction: column;
     max-height: min(760px, calc(100vh - 32px));
     overflow: hidden;
     background: var(--surface-overlay);
@@ -153,11 +156,21 @@
   }
 
   .dialog-body {
-    max-height: calc(min(760px, 100vh - 32px) - 78px);
+    flex: 1;
+    min-height: 0;
     padding: var(--space-5);
     overflow-y: auto;
     scrollbar-color: var(--separator-strong) transparent;
     scrollbar-width: thin;
+  }
+
+  .dialog-footer {
+    flex: 0 0 auto;
+    padding: 0 var(--space-5) var(--space-5);
+  }
+
+  .dialog-footer:empty {
+    display: none;
   }
 
   @media (max-width: 540px) {
@@ -172,7 +185,8 @@
     }
 
     header,
-    .dialog-body {
+    .dialog-body,
+    .dialog-footer {
       padding-right: var(--space-4);
       padding-left: var(--space-4);
     }

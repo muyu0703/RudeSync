@@ -17,7 +17,6 @@
   import { createSettingsService } from "../settings/settingsService";
   import ClientForm from "./components/ClientForm.svelte";
   import ProjectForm from "./components/ProjectForm.svelte";
-  import WorkDialog from "./components/WorkDialog.svelte";
   import WorkEntryForm from "./components/WorkEntryForm.svelte";
   import { planTotalMinor } from "./milestonePlans";
   import { createWorkService } from "./workService";
@@ -782,59 +781,46 @@
 </section>
 
 {#if dialog === "client"}
-  <WorkDialog
-    title={editingClient ? "Edit client" : "New client"}
-    description={editingClient
+  <ClientForm
+    dialogTitle={editingClient ? "Edit client" : "New client"}
+    dialogDescription={editingClient
       ? "Correct contact, billing, currency, or private notes. Issued invoices keep their original snapshot."
       : "Create the relationship once, then keep every project and invoice organized beneath it."}
-    onClose={closeDialog}
-  >
-    <ClientForm
-      {defaultCurrency}
-      client={editingClient}
-      busy={saving}
-      onSave={saveClient}
-      onCancel={closeDialog}
-    />
-  </WorkDialog>
+    {defaultCurrency}
+    client={editingClient}
+    busy={saving}
+    onSave={saveClient}
+    onCancel={closeDialog}
+  />
 {:else if dialog === "project"}
-  <WorkDialog
-    title={editingProject ? "Edit fixed-price project" : "New fixed-price project"}
-    description={editingProject
+  <ProjectForm
+    dialogTitle={editingProject ? "Edit fixed-price project" : "New fixed-price project"}
+    dialogDescription={editingProject
       ? "Correct value, status, dates, notes, links, or milestone split. Existing invoices remain unchanged."
       : "The project is the container for milestones, completed work, invoices, and payments."}
-    wide
-    onClose={closeDialog}
-  >
-    <ProjectForm
-      {clients}
-      initialClientId={selectedClientId === "all" ? null : selectedClientId}
-      project={editingProject}
-      busy={saving}
-      onSave={saveProject}
-      onCancel={closeDialog}
-    />
-  </WorkDialog>
+    {clients}
+    initialClientId={selectedClientId === "all" ? null : selectedClientId}
+    project={editingProject}
+    busy={saving}
+    onSave={saveProject}
+    onCancel={closeDialog}
+  />
 {:else if dialog === "work"}
-  <WorkDialog
-    title={editingWorkEntry ? "Edit completed work" : "Record completed work"}
-    description={editingWorkEntry
+  <WorkEntryForm
+    dialogTitle={editingWorkEntry ? "Edit completed work" : "Record completed work"}
+    dialogDescription={editingWorkEntry
       ? "Correct the project, date, result, details, or reference URLs."
       : "Capture the result, not the hours. URLs stay as lightweight references."}
-    onClose={closeDialog}
-  >
-    <WorkEntryForm
-      {projects}
-      entry={editingWorkEntry}
-      initialProjectId={workEntryProjectId}
-      initialTitle={workEntryTitle}
-      initialDetails={workEntryDetails}
-      initialWorkDate={workEntryDate || workDateToday()}
-      busy={saving}
-      onSave={saveWorkEntry}
-      onCancel={closeDialog}
-    />
-  </WorkDialog>
+    {projects}
+    entry={editingWorkEntry}
+    initialProjectId={workEntryProjectId}
+    initialTitle={workEntryTitle}
+    initialDetails={workEntryDetails}
+    initialWorkDate={workEntryDate || workDateToday()}
+    busy={saving}
+    onSave={saveWorkEntry}
+    onCancel={closeDialog}
+  />
 {/if}
 
 <style>

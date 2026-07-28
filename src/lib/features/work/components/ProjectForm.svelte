@@ -12,7 +12,10 @@
     phases,
     planTotalMinor,
   } from "../milestonePlans";
+  import WorkDialog from "./WorkDialog.svelte";
 
+  export let dialogTitle: string;
+  export let dialogDescription = "";
   export let clients: Client[] = [];
   export let initialClientId: string | null = null;
   export let project: Project | null = null;
@@ -245,7 +248,8 @@
   }
 </script>
 
-<form on:submit|preventDefault={submit}>
+<WorkDialog wide title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+<form id="project-form" on:submit|preventDefault={submit}>
   <div class="field-grid two">
     <label>
       <span class="field-label">Client <b aria-hidden="true">*</b></span>
@@ -460,13 +464,17 @@
     </button>
   </fieldset>
 
+</form>
+
+<svelte:fragment slot="footer">
   <footer>
     <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
-    <button class="primary" type="submit" disabled={busy || formInvalid}>
+    <button class="primary" type="submit" form="project-form" disabled={busy || formInvalid}>
       {busy ? "Saving…" : project ? "Save changes" : "Create project"}
     </button>
   </footer>
-</form>
+</svelte:fragment>
+</WorkDialog>
 
 <style>
   form {

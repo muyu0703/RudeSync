@@ -5,7 +5,10 @@
     WorkEntry,
   } from "../types";
   import { workDateUtils } from "../workService";
+  import WorkDialog from "./WorkDialog.svelte";
 
+  export let dialogTitle: string;
+  export let dialogDescription = "";
   export let projects: Project[] = [];
   export let initialProjectId: string | null = null;
   export let initialTitle = "";
@@ -57,7 +60,8 @@
   }
 </script>
 
-<form on:submit|preventDefault={submit}>
+<WorkDialog title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+<form id="work-entry-form" on:submit|preventDefault={submit}>
   <div class="field-grid project-row">
     <label>
       <span class="field-label">Project</span>
@@ -114,13 +118,17 @@
     <p class="field-error" role="alert">{validationMessage}</p>
   {/if}
 
+</form>
+
+<svelte:fragment slot="footer">
   <footer>
     <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
-    <button class="primary" type="submit" disabled={busy || !title.trim() || !workDate}>
+    <button class="primary" type="submit" form="work-entry-form" disabled={busy || !title.trim() || !workDate}>
       {busy ? "Saving…" : entry ? "Save changes" : "Record completed work"}
     </button>
   </footer>
-</form>
+</svelte:fragment>
+</WorkDialog>
 
 <style>
   form {

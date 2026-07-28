@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from "svelte";
   import { cubicOut } from "svelte/easing";
-  import { fade, scale } from "svelte/transition";
+  import { scale } from "svelte/transition";
   import Icon from "../../components/Icon.svelte";
   import { motionDuration } from "../../motion";
   import type { Task, TaskPriority, TaskRecurrence } from "../../types";
@@ -48,7 +48,19 @@
   let validationMessage = "";
   let titleInput: HTMLInputElement;
   let lastIdentity = "";
-  let backdropOutroing = false;
+  let dialog: HTMLDialogElement;
+
+  // The dialog stays mounted for the app's lifetime (App.svelte renders it
+  // unconditionally), so — unlike WorkDialog, which is created fresh each
+  // time it opens — open/close has to be driven imperatively off the `open`
+  // prop rather than from onMount.
+  $: if (dialog) {
+    if (open) {
+      if (!dialog.open) dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }
 
   $: if (open) {
     const identity = task?.id ?? "new";
@@ -146,6 +158,10 @@
     if (!saving) dispatch("close");
   }
 
+  function handleBackdrop(event: MouseEvent): void {
+    if (event.target === dialog) close();
+  }
+
   function submit(): void {
     validationMessage = "";
     if (!title.trim()) {
@@ -199,31 +215,24 @@
     };
     dispatch("save", { task, draft });
   }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") close();
-  }
 </script>
 
-<svelte:window on:keydown={(event) => open && handleKeydown(event)} />
-
-{#if open}
-  <div
-    class="backdrop"
-    class:outroing={backdropOutroing}
-    role="presentation"
-    on:click|self={close}
-    transition:fade={{ duration: motionDuration(140) }}
-    on:outrostart={() => (backdropOutroing = true)}
-    on:outroend={() => (backdropOutroing = false)}
-  >
-    <div
-      class="dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="task-dialog-title"
+<dialog
+  bind:this={dialog}
+  aria-labelledby="task-dialog-title"
+  on:cancel|preventDefault={close}
+  on:click={handleBackdrop}
+>
+  <!--
+    No out:transition on .dialog-card: every close path calls the native
+    dialog.close() synchronously, which strips the `open` attribute and lets
+    the UA stylesheet hide the element before an outro could render — see
+    WorkDialog.svelte for the same rationale.
+  -->
+  {#if open}
+    <section
+      class="dialog-card"
       in:scale={{ duration: motionDuration(200), start: 0.96, opacity: 0, easing: cubicOut }}
-      out:scale={{ duration: motionDuration(140), start: 0.98, opacity: 0, easing: cubicOut }}
     >
       <header>
         <div>
@@ -235,7 +244,8 @@
         </button>
       </header>
 
-      <form on:submit|preventDefault={submit}>
+      <div class="dialog-body">
+      <form id="task-dialog-form" on:submit|preventDefault={submit}>
         <label class="field span-2">
           <span class="field-label">Task title</span>
           <input
@@ -385,46 +395,48 @@
         {#if validationMessage}
           <p class="field-error span-2" role="alert">{validationMessage}</p>
         {/if}
-
-        <footer class="span-2">
-          <button class="cancel" type="button" on:click={close}>Cancel</button>
-          <button class="save" type="submit" disabled={saving || !title.trim()}>
-            {saving ? "Saving…" : task ? "Save changes" : "Create task"}
-          </button>
-        </footer>
       </form>
-    </div>
-  </div>
-{/if}
+      </div>
+
+      <footer>
+        <button class="cancel" type="button" on:click={close}>Cancel</button>
+        <button class="save" type="submit" form="task-dialog-form" disabled={saving || !title.trim()}>
+          {saving ? "Saving…" : task ? "Save changes" : "Create task"}
+        </button>
+      </footer>
+    </section>
+  {/if}
+</dialog>
 
 <style>
-  .backdrop {
-    position: fixed;
-    z-index: 100;
-    inset: 0;
-    display: grid;
-    padding: var(--space-6);
-    place-items: center;
+  dialog {
+    width: min(690px, calc(100vw - 32px));
+    max-height: min(860px, calc(100vh - 32px));
+    padding: 0;
+    color: var(--text-primary);
+    background: transparent;
+    border: 0;
+    overflow: visible;
+  }
+
+  dialog::backdrop {
     background: rgb(2 7 6 / 78%);
     backdrop-filter: blur(5px);
   }
-  .backdrop.outroing { pointer-events: none; }
 
-  .dialog {
-    width: min(690px, 100%);
-    max-height: min(860px, calc(100vh - 48px));
-    overflow: auto;
-    color: var(--text-primary);
+  .dialog-card {
+    display: flex;
+    flex-direction: column;
+    max-height: min(860px, calc(100vh - 32px));
+    overflow: hidden;
     background: var(--surface-overlay);
     border-radius: var(--radius-sheet);
     box-shadow: var(--shadow-sheet);
   }
 
   header {
-    position: sticky;
-    z-index: 2;
-    top: 0;
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     padding: var(--space-5) var(--space-6) var(--space-4);
@@ -446,6 +458,14 @@
     border: 1px solid var(--separator);
     border-radius: var(--radius-control);
     cursor: pointer;
+  }
+
+  .dialog-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-color: var(--separator-strong) transparent;
+    scrollbar-width: thin;
   }
 
   form {
@@ -551,9 +571,11 @@
 
   footer {
     display: flex;
+    flex: 0 0 auto;
     justify-content: flex-end;
     gap: var(--space-2);
-    padding-top: 4px;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+    border-top: 1px solid var(--separator);
   }
 
   footer button {
@@ -578,8 +600,22 @@
   .save:disabled { cursor: not-allowed; opacity: 0.5; }
 
   @media (max-width: 620px) {
-    .backdrop { padding: 0; place-items: stretch; }
-    .dialog { width: 100%; max-height: 100vh; border-radius: 0; }
+    dialog {
+      width: calc(100vw - 20px);
+      max-height: calc(100vh - 20px);
+    }
+
+    .dialog-card {
+      max-height: calc(100vh - 20px);
+    }
+
+    header,
+    form,
+    footer {
+      padding-right: var(--space-4);
+      padding-left: var(--space-4);
+    }
+
     form { grid-template-columns: 1fr; }
     .span-2 { grid-column: 1; }
   }

@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { Client, CreateClientInput } from "../types";
+  import WorkDialog from "./WorkDialog.svelte";
 
+  export let dialogTitle: string;
+  export let dialogDescription = "";
   export let busy = false;
   export let defaultCurrency = "USD";
   export let client: Client | null = null;
@@ -27,57 +30,61 @@
   }
 </script>
 
-<form on:submit|preventDefault={submit}>
-  <div class="field-grid two">
-    <label>
-      <span class="field-label">Client name <b aria-hidden="true">*</b></span>
-      <input class="field-input" bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
-    </label>
-    <label>
-      <span class="field-label">Company</span>
-      <input class="field-input" bind:value={companyName} maxlength="160" autocomplete="organization" />
-    </label>
-  </div>
+<WorkDialog title={dialogTitle} description={dialogDescription} onClose={onCancel}>
+  <form id="client-form" on:submit|preventDefault={submit}>
+    <div class="field-grid two">
+      <label>
+        <span class="field-label">Client name <b aria-hidden="true">*</b></span>
+        <input class="field-input" bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
+      </label>
+      <label>
+        <span class="field-label">Company</span>
+        <input class="field-input" bind:value={companyName} maxlength="160" autocomplete="organization" />
+      </label>
+    </div>
 
-  <div class="field-grid currency-row">
+    <div class="field-grid currency-row">
+      <label>
+        <span class="field-label">Email</span>
+        <input class="field-input" bind:value={email} maxlength="254" type="email" autocomplete="email" />
+      </label>
+      <label>
+        <span class="field-label">Currency</span>
+        <input
+          class="field-input"
+          value={currency}
+          on:input={(e) => (currency = e.currentTarget.value.toUpperCase())}
+          maxlength="3"
+          minlength="3"
+          pattern={"[A-Z]{3}"}
+          autocapitalize="characters"
+          aria-describedby="currency-help"
+          required
+        />
+        <small id="currency-help" class="field-hint">Three-letter code</small>
+      </label>
+    </div>
+
     <label>
-      <span class="field-label">Email</span>
-      <input class="field-input" bind:value={email} maxlength="254" type="email" autocomplete="email" />
+      <span class="field-label">Billing address</span>
+      <textarea class="field-textarea" bind:value={billingAddress} maxlength="600" rows="2"></textarea>
     </label>
+
     <label>
-      <span class="field-label">Currency</span>
-      <input
-        class="field-input"
-        value={currency}
-        on:input={(e) => (currency = e.currentTarget.value.toUpperCase())}
-        maxlength="3"
-        minlength="3"
-        pattern={"[A-Z]{3}"}
-        autocapitalize="characters"
-        aria-describedby="currency-help"
-        required
-      />
-      <small id="currency-help" class="field-hint">Three-letter code</small>
+      <span class="field-label">Private notes</span>
+      <textarea class="field-textarea" bind:value={notes} maxlength="1200" rows="3"></textarea>
     </label>
-  </div>
+  </form>
 
-  <label>
-    <span class="field-label">Billing address</span>
-    <textarea class="field-textarea" bind:value={billingAddress} maxlength="600" rows="2"></textarea>
-  </label>
-
-  <label>
-    <span class="field-label">Private notes</span>
-    <textarea class="field-textarea" bind:value={notes} maxlength="1200" rows="3"></textarea>
-  </label>
-
-  <footer>
-    <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
-    <button class="primary" type="submit" disabled={busy || !name.trim() || currency.length !== 3}>
-      {busy ? "Saving…" : client ? "Save changes" : "Create client"}
-    </button>
-  </footer>
-</form>
+  <svelte:fragment slot="footer">
+    <footer>
+      <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
+      <button class="primary" type="submit" form="client-form" disabled={busy || !name.trim() || currency.length !== 3}>
+        {busy ? "Saving…" : client ? "Save changes" : "Create client"}
+      </button>
+    </footer>
+  </svelte:fragment>
+</WorkDialog>
 
 <style>
   form {
