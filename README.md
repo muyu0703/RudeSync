@@ -9,14 +9,35 @@ does not require an account, a separately managed web server, or a cloud
 connection. Windows is the supported platform for this release; the
 architecture preserves a future path to macOS.
 
+It is free and open source under the [MIT License](LICENSE).
+
+## Screenshots
+
+> Add screenshots here before sharing the repository. Suggested set: **Today**
+> (the dashboard with its stat row), **Work** (a project with milestone
+> progress), **Money** (invoices), and the floating task widget over another
+> window. Put the files in `docs/screenshots/` and reference them as
+> `![Today](docs/screenshots/today.png)`.
+
 ## Features
 
 - **Today and tasks:** quick capture, planned dates, separate deadlines,
   priorities, categories, reminders, recurrence, subtasks, project links, and
   Today/Upcoming/Completed views.
 - **Clients and projects:** client records, per-client currencies, fixed-price
-  project containers, default 50/50 kickoff and completion milestones, and
-  lightweight completed-work records with notes and URLs.
+  project containers, and lightweight completed-work records with notes and
+  URLs. Records created by mistake can be deleted, with financial history
+  protected — a project that already has invoices refuses deletion rather than
+  quietly taking them with it.
+- **Flexible milestone plans:** a project bills through any number of
+  explicitly-priced milestones, seeded from templates (kickoff + completion,
+  even weekly, phase-by-phase, or custom). Out-of-scope work is just another
+  milestone added at any time, so the project total grows with it. Each
+  milestone tracks its own status — not invoiced, invoiced, paid — and the
+  project shows what is left to bill.
+- **Floating task widget:** an always-on-top window that lists open tasks, with
+  check-off, quick add, subtask toggling and inline editing. It syncs live with
+  the main window and remembers where you put it.
 - **Invoices and earnings:** date-based invoice numbers such as
   `INV-2026-07-23-0001`, selectable payment terms, milestone billing, line
   items, editable drafts, issue/void history, fixed or percentage discounts,
@@ -40,16 +61,16 @@ The full product rules and accepted scope are documented in
 ## Install on Windows 11
 
 The release build is a 64-bit NSIS installer named
-`RudeSync_0.1.0_x64-setup.exe`. A locally built installer is written to:
+`RudeSync_0.1.6_x64-setup.exe`. A locally built installer is written to:
 
 ```text
-src-tauri\target\release\bundle\nsis\RudeSync_0.1.0_x64-setup.exe
+src-tauri\target\release\bundle\nsis\RudeSync_0.1.6_x64-setup.exe
 ```
 
 To install:
 
 1. Close any older RudeSync instance from its tray icon.
-2. Run `RudeSync_0.1.0_x64-setup.exe`.
+2. Run `RudeSync_0.1.6_x64-setup.exe`.
 3. Complete the installer, then open RudeSync from the Start menu.
 4. Open **Settings** and configure your invoice profile, backup folder,
    startup preference, and notification preference.
@@ -138,7 +159,7 @@ creates a pre-restore safety copy, swaps the database on the same volume, and
 reloads the application. If the restored database cannot be opened, RudeSync
 rolls back to the original database and reports the error.
 
-RudeSync 0.1.0 has no cloud sync and no application-level database encryption.
+RudeSync has no cloud sync and no application-level database encryption.
 Protect the Windows account and backup folder appropriately. Browser-based
 development uses browser local storage and is separate from the desktop SQLite
 database.
@@ -202,3 +223,57 @@ npm.cmd run tauri build
 
 Generated frontend and Rust build outputs live in `dist\` and
 `src-tauri\target\` respectively and are intentionally ignored by Git.
+
+## Customising
+
+RudeSync is built to be re-skinned without touching feature code. The entire
+visual language lives in the `:root` block of [`src/app.css`](src/app.css).
+
+**Colour.** The app ships a dark "deep forest" palette. Change these and the
+whole interface follows:
+
+```css
+--surface-window: #070d0a;   /* app background        */
+--surface-content: #0d1712;  /* cards and panels      */
+--surface-raised: #142019;   /* rows nested in a card */
+--surface-overlay: #1a2820;  /* dialogs and sheets    */
+--accent: #3ddc84;           /* positive, completed   */
+--danger: #ff6961;           /* overdue               */
+--amber: #e3b341;            /* due soon, outstanding */
+```
+
+Keep the ground dark enough that `--accent` still reads as a signal. If the
+background drifts toward the accent hue, the accent stops meaning anything and
+the interface flattens.
+
+**Type.** `--font-ui` prefers the system font on Apple platforms and falls back
+to the bundled Inter elsewhere, so the app looks native without a network
+request. Sizes come from a fixed whole-pixel scale (`--text-11` … `--text-28`)
+and four weights.
+
+**Shape, spacing, motion.** Four radii (`--radius-control`, `--radius-panel`,
+`--radius-sheet`, `--radius-pill`), a 4px spacing scale (`--space-1` …
+`--space-10`), and `--duration` / `--ease` for transitions.
+
+**Structure.** Screens are composed from small primitives in
+`src/lib/components/` — `Card`, `StatCard`, `StatRow`, `SectionHeader`,
+`MeterBar`. Restyling a primitive restyles every screen at once, which is the
+point: consistency is structural rather than a matter of discipline.
+
+Two rules worth keeping if you fork it: colour should never be the only carrier
+of meaning (every status colour is paired with a text label), and every
+animation duration should pass through `motionDuration()` in
+[`src/lib/motion.ts`](src/lib/motion.ts) so the reduced-motion preference is
+honoured. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full rationale.
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) — it
+covers the constraints that shape the codebase (offline-first, integer money,
+soft deletion, and the design system) and the checks a pull request must pass.
+
+## License
+
+Released under the [MIT License](LICENSE). You may use, modify and distribute
+it freely, including commercially, provided the copyright notice and licence
+text are retained.
