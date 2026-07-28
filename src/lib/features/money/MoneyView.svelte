@@ -11,6 +11,17 @@
   } from "../../domain/money.ts";
   import { addDays, addMonthsClamped } from "../../domain/date.ts";
   import { generateLoanDueDates } from "../../domain/loan-schedule.ts";
+  import Card from "../../components/Card.svelte";
+  import Icon from "../../components/Icon.svelte";
+  import SectionHeader from "../../components/SectionHeader.svelte";
+  import StatCard from "../../components/StatCard.svelte";
+  import StatRow from "../../components/StatRow.svelte";
+  import {
+    outstandingByCurrency,
+    overdueInvoiceCount,
+    receivedInMonth,
+    type CurrencyAmount,
+  } from "../dashboard/stats.ts";
   import { createSettingsService } from "../settings/settingsService";
   import {
     createMoneyService,
@@ -101,17 +112,19 @@
   $: draftTotals = getDraftTotals();
   $: paymentInvoice =
     invoices.find((invoice) => invoice.id === paymentInvoiceId) ?? null;
-  $: invoiceSummaries = summarizeInvoices();
   $: paymentRows = collectPaymentRows();
   $: earningGroups = groupEarnings();
-  $: unpaidInstallmentCount = loans.reduce(
-    (total, loan) =>
-      total + loan.installments.filter((item) => !item.paid).length,
-    0,
-  );
   $: scheduleIsStale =
     loanScheduleDates.length > 0 &&
     loanPreviewSignature !== currentLoanSignature();
+  $: moneyOutstanding = outstandingByCurrency(invoices);
+  $: moneyReceived = receivedInMonth(invoices, today);
+  $: overdueInvoices = overdueInvoiceCount(invoices, today);
+  $: earningsSubtext = earningGroups.length
+    ? `All-time collected · ${earningGroups
+        .map((group) => formatMoney(group.total, group.currency))
+        .join(" · ")}`
+    : "All-time collected";
 
   function blankLine(): DraftLine {
     return {
@@ -168,6 +181,16 @@
     } catch {
       return `${currency} ${(amount / 100).toFixed(2)}`;
     }
+  }
+
+  // Per-currency amounts are never summed together. Only the first currency
+  // is shown as the stat's headline value; any others are listed in the
+  // detail line instead, matching the Today dashboard's stat cards.
+  function extraCurrencies(entries: CurrencyAmount[]): string {
+    return entries
+      .slice(1)
+      .map((entry) => formatMoney(entry.amountMinor, entry.currency))
+      .join(" · ");
   }
 
   function formatDate(value: string): string {
@@ -251,36 +274,6 @@
 
   function statusLabel(status: InvoiceStatus): string {
     return status.replace("-", " ");
-  }
-
-  function summarizeInvoices(): Array<{
-    currency: string;
-    collected: number;
-    outstanding: number;
-  }> {
-    const groups = new Map<
-      string,
-      { currency: string; collected: number; outstanding: number }
-    >();
-    for (const invoice of invoices) {
-      const totals = invoiceTotals(invoice);
-      const group = groups.get(invoice.currency) ?? {
-        currency: invoice.currency,
-        collected: 0,
-        outstanding: 0,
-      };
-      group.collected += totals.paidMinor;
-      if (
-        effectiveInvoiceStatus(invoice) !== "void" &&
-        effectiveInvoiceStatus(invoice) !== "draft"
-      ) {
-        group.outstanding += totals.balanceDueMinor;
-      }
-      groups.set(invoice.currency, group);
-    }
-    return [...groups.values()].sort((a, b) =>
-      a.currency.localeCompare(b.currency),
-    );
   }
 
   function groupEarnings(): Array<{ currency: string; total: number }> {
@@ -902,27 +895,31 @@
       <h2 id="money-heading">Money</h2>
       <p>Client earnings and personal loans stay deliberately separate.</p>
     </div>
-    <div class="heading-actions">
-      {#if activeTab === "invoices"}
-        <button
-          class="primary"
-          type="button"
-          disabled={!projects.length}
-          title={projects.length ? "" : "Create a project in Work first"}
-          on:click={openInvoiceComposer}
-        >+ New invoice</button>
-      {:else if activeTab === "loans"}
-        <button
-          class="primary"
-          type="button"
-          on:click={() => {
-            showLoanForm = true;
-            showInvoiceForm = false;
-          }}
-        >+ New personal loan</button>
-      {/if}
-    </div>
   </header>
+
+  <StatRow>
+    <StatCard
+      icon="invoice"
+      label="Outstanding"
+      value={moneyOutstanding.length ? formatMoney(moneyOutstanding[0].amountMinor, moneyOutstanding[0].currency) : "None"}
+      detail={moneyOutstanding.length > 1 ? extraCurrencies(moneyOutstanding) : "Invoiced, not yet paid"}
+      tone={moneyOutstanding.length ? "warning" : "neutral"}
+    />
+    <StatCard
+      icon="arrow-up-right"
+      label="Received"
+      value={moneyReceived.length ? formatMoney(moneyReceived[0].amountMinor, moneyReceived[0].currency) : "None"}
+      detail={moneyReceived.length > 1 ? extraCurrencies(moneyReceived) : "This month"}
+      tone={moneyReceived.length ? "positive" : "neutral"}
+    />
+    <StatCard
+      icon="clock"
+      label="Overdue invoices"
+      value={String(overdueInvoices)}
+      detail={overdueInvoices === 0 ? "All current" : "Past due date"}
+      tone={overdueInvoices > 0 ? "danger" : "neutral"}
+    />
+  </StatRow>
 
   {#if errorMessage}
     <div class="notice error" role="alert">
@@ -937,31 +934,32 @@
     </div>
   {/if}
 
-  <div class="summary-row">
-    <article>
-      <span>Collected earnings</span>
-      {#if invoiceSummaries.length}
-        {#each invoiceSummaries as summary}
-          <strong>{formatMoney(summary.collected, summary.currency)}</strong>
-        {/each}
-      {:else}<strong>$0.00</strong>{/if}
-      <small>Recorded payments only</small>
-    </article>
-    <article>
-      <span>Outstanding</span>
-      {#if invoiceSummaries.length}
-        {#each invoiceSummaries as summary}
-          <strong>{formatMoney(summary.outstanding, summary.currency)}</strong>
-        {/each}
-      {:else}<strong>$0.00</strong>{/if}
-      <small>Issued invoice balances</small>
-    </article>
-    <article class="accent">
-      <span>Loan installments due</span>
-      <strong>{unpaidInstallmentCount}</strong>
-      <small>Paid status only · no balances</small>
-    </article>
-  </div>
+  {#if activeTab === "invoices" || activeTab === "loans"}
+    <div class="page-actions">
+      {#if activeTab === "invoices"}
+        <button
+          class="primary-button"
+          type="button"
+          disabled={!projects.length}
+          title={projects.length ? "" : "Create a project in Work first"}
+          on:click={openInvoiceComposer}
+        >
+          <Icon name="invoice" size={15} /> New invoice
+        </button>
+      {:else}
+        <button
+          class="primary-button"
+          type="button"
+          on:click={() => {
+            showLoanForm = true;
+            showInvoiceForm = false;
+          }}
+        >
+          <Icon name="loan" size={15} /> New personal loan
+        </button>
+      {/if}
+    </div>
+  {/if}
 
   <div class="tabs" role="tablist" aria-label="Money sections">
     <button
@@ -1144,6 +1142,11 @@
         </form>
       {/if}
 
+      <Card>
+        <SectionHeader slot="header" title="Invoiced vs received" />
+        <div class="chart-slot" aria-hidden="true"></div>
+      </Card>
+
       {#if loading}
         <div class="loading-state" aria-live="polite">Loading invoices…</div>
       {:else if !projects.length && !invoices.length}
@@ -1158,7 +1161,12 @@
           <button class="primary" type="button" on:click={openInvoiceComposer}>Create first invoice</button>
         </div>
       {:else}
-        <div class="invoice-list">
+        <Card>
+          <SectionHeader
+            slot="header"
+            title={`${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}`}
+          />
+          <div class="invoice-list">
           {#each invoices as invoice (invoice.id)}
             {@const totals = invoiceTotals(invoice)}
             {@const status = effectiveInvoiceStatus(invoice)}
@@ -1216,7 +1224,8 @@
               </footer>
             </article>
           {/each}
-        </div>
+          </div>
+        </Card>
       {/if}
     </div>
   {:else if activeTab === "earnings"}
@@ -1226,29 +1235,28 @@
       aria-labelledby="money-tab-earnings"
       class="tab-panel"
     >
-      <div class="earnings-head">
-        <div><span class="eyebrow">Received, not expected</span><h3>Collected earnings</h3></div>
-        <div class="earning-totals">
-          {#if earningGroups.length}
-            {#each earningGroups as group}<strong>{formatMoney(group.total, group.currency)}</strong>{/each}
-          {:else}<strong>$0.00</strong>{/if}
-        </div>
-      </div>
-      {#if paymentRows.length}
-        <div class="payment-list">
-          {#each paymentRows as row (row.payment.id)}
-            <article>
-              <span class="payment-mark">↙</span>
-              <div><strong>{row.invoice.clientName}</strong><small>{row.invoice.projectName} · {row.invoice.number}</small></div>
-              <time datetime={row.payment.receivedDate}>{formatDate(row.payment.receivedDate)}</time>
-              <b>{formatMoney(row.payment.amountMinor, row.invoice.currency)}</b>
-              <small>{row.payment.note ?? "Payment received"}</small>
-            </article>
-          {/each}
-        </div>
-      {:else}
-        <div class="empty-state"><span>USD</span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
-      {/if}
+      <Card>
+        <SectionHeader
+          slot="header"
+          title={`${paymentRows.length} ${paymentRows.length === 1 ? "payment" : "payments"}`}
+          subtext={earningsSubtext}
+        />
+        {#if paymentRows.length}
+          <div class="payment-list">
+            {#each paymentRows as row (row.payment.id)}
+              <article>
+                <span class="payment-mark">↙</span>
+                <div><strong>{row.invoice.clientName}</strong><small>{row.invoice.projectName} · {row.invoice.number}</small></div>
+                <time datetime={row.payment.receivedDate}>{formatDate(row.payment.receivedDate)}</time>
+                <b>{formatMoney(row.payment.amountMinor, row.invoice.currency)}</b>
+                <small>{row.payment.note ?? "Payment received"}</small>
+              </article>
+            {/each}
+          </div>
+        {:else}
+          <div class="empty-state"><span>USD</span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
+        {/if}
+      </Card>
     </div>
   {:else}
     <div
@@ -1424,17 +1432,17 @@
     color: var(--mv-text);
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     width: 100%;
-    max-width: 1240px;
+    max-width: 1120px;
     margin: 0 auto;
   }
   button, input, select, textarea { font: inherit; }
   button { color: inherit; }
-  .money-heading, .composer-head, .invoice-main, .invoice-card footer, .earnings-head, .preview-toolbar {
+  .money-heading, .composer-head, .invoice-main, .invoice-card footer, .preview-toolbar {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
   }
   .money-heading { margin-bottom: 20px; }
   .money-heading h2 { font-size: 25px; margin: 3px 0 4px; letter-spacing: -0.03em; }
-  .money-heading p, .composer-head h3, .earnings-head h3 { margin: 0; }
+  .money-heading p, .composer-head h3 { margin: 0; }
   .money-heading p { color: var(--mv-muted); font-size: 13px; }
   .eyebrow { color: var(--mv-green); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
   .primary, .secondary, .text-button, .icon-button {
@@ -1454,20 +1462,15 @@
   .notice.error { color: #ffb3b3; background: rgba(239,118,118,.09); border: 1px solid rgba(239,118,118,.25); }
   .notice.success { color: #9aefbe; background: var(--mv-green-soft); border: 1px solid rgba(52,209,123,.25); }
   .notice button { background: none; border: 0; color: inherit; cursor: pointer; }
-  .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-bottom: 18px; }
-  .summary-row article { min-height: 95px; background: var(--mv-panel); border: 1px solid var(--mv-border-soft); border-radius: 9px; padding: 14px; display: flex; flex-direction: column; gap: 5px; }
-  .summary-row article.accent { border-color: rgba(52,209,123,.24); background: linear-gradient(115deg, var(--mv-panel), rgba(52,209,123,.055)); }
-  .summary-row span, .summary-row small { color: var(--mv-muted); font-size: 11px; }
-  .summary-row strong { font-size: 20px; letter-spacing: -.03em; }
   .tabs { display: flex; gap: 3px; border-bottom: 1px solid var(--mv-border); }
   .tabs button { position: relative; border: 0; background: transparent; color: var(--mv-muted); padding: 11px 13px; cursor: pointer; font-weight: 700; font-size: 12px; }
   .tabs button.active { color: var(--mv-text); }
   .tabs button.active::after { content: ""; position: absolute; height: 2px; left: 10px; right: 10px; bottom: -1px; background: var(--mv-green); }
   .tabs button span { margin-left: 5px; color: var(--mv-muted); background: var(--mv-raised); border-radius: 9px; padding: 1px 6px; font-size: 9px; }
-  .tab-panel { padding-top: 15px; }
+  .tab-panel { display: flex; flex-direction: column; gap: var(--space-4); padding-top: 15px; }
   .composer { background: var(--mv-panel); border: 1px solid var(--mv-border); border-radius: 10px; padding: 17px; margin-bottom: 14px; }
   .composer-head { padding-bottom: 14px; border-bottom: 1px solid var(--mv-border-soft); margin-bottom: 14px; }
-  .composer-head h3, .earnings-head h3 { font-size: 17px; margin-top: 3px; }
+  .composer-head h3 { font-size: 17px; margin-top: 3px; }
   .number-chip, .separation-chip { color: var(--mv-green); background: var(--mv-green-soft); border: 1px solid rgba(52,209,123,.2); padding: 7px 9px; border-radius: 6px; font: 700 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
   .form-grid .span-2 { grid-column: span 2; }
@@ -1493,7 +1496,8 @@
   .totals b { color: var(--mv-text); }
   .totals > strong { color: var(--mv-text); border-top: 1px solid var(--mv-border); padding-top: 8px; font-size: 13px; }
   .form-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--mv-border-soft); margin-top: 14px; padding-top: 13px; }
-  .invoice-list, .loan-list { display: grid; gap: 9px; }
+  .invoice-list { display: grid; gap: var(--space-2); }
+  .loan-list { display: grid; gap: 9px; }
   .invoice-card, .loan-card { background: var(--mv-panel); border: 1px solid var(--mv-border-soft); border-radius: 9px; }
   .invoice-main { padding: 13px 14px; }
   .invoice-identity { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px 9px; min-width: 240px; }
@@ -1516,10 +1520,8 @@
   .payment-form label { width: 145px; }
   .payment-form label.grow { flex: 1; }
   .payment-form input { min-height: 32px; padding: 6px 8px; }
-  .earnings-head { background: var(--mv-panel); border: 1px solid var(--mv-border-soft); border-radius: 9px 9px 0 0; padding: 14px; }
-  .earning-totals { display: grid; text-align: right; color: var(--mv-green); }
-  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border: 1px solid var(--mv-border-soft); border-top: 0; background: var(--mv-panel); padding: 11px 13px; font-size: 11px; }
-  .payment-list article:last-child { border-radius: 0 0 9px 9px; }
+  .payment-list { display: grid; gap: var(--space-2); }
+  .payment-list article { display: grid; grid-template-columns: 32px minmax(180px, 1fr) 130px 120px minmax(120px, .7fr); gap: 10px; align-items: center; border: 1px solid var(--mv-border-soft); border-radius: 9px; background: var(--mv-panel); padding: 11px 13px; font-size: 11px; }
   .payment-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--mv-green); background: var(--mv-green-soft); }
   .payment-list div { display: flex; flex-direction: column; gap: 2px; }
   .payment-list small, .payment-list time { color: var(--mv-muted); }
@@ -1561,7 +1563,6 @@
   .loading-state { font-size: 11px; }
   .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
   @media (max-width: 900px) {
-    .summary-row { grid-template-columns: 1fr; }
     .form-grid { grid-template-columns: 1fr 1fr; }
     .invoice-main { align-items: flex-start; flex-wrap: wrap; }
     .payment-list article { grid-template-columns: 32px 1fr auto; }
@@ -1570,7 +1571,6 @@
   }
   @media (max-width: 620px) {
     .money-heading, .invoice-card footer, .payment-form { align-items: stretch; flex-direction: column; }
-    .heading-actions .primary { width: 100%; }
     .form-grid, .notes-grid { grid-template-columns: 1fr; }
     .form-grid .span-2 { grid-column: auto; }
     .line-labels { display: none; }
