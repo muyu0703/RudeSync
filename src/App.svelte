@@ -657,6 +657,8 @@
     {/if}
 
     <div class="content-scroll">
+      {#key active}
+      <div in:fade={{ duration: motionDuration(140) }}>
       {#if active === "today"}
         <StatRow>
           <StatCard
@@ -965,6 +967,8 @@
       {:else}
         <SettingsView />
       {/if}
+      </div>
+      {/key}
     </div>
   </main>
 </div>
