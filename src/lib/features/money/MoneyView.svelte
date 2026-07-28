@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import { fade, slide } from "svelte/transition";
   import { motionDuration } from "../../motion";
   import {
@@ -73,6 +73,10 @@
   // because of that very draft, so it must stay pickable in the form.
   let editingMilestoneId: string | null = null;
 
+  let noticeRegion: HTMLDivElement | undefined;
+  let composerFormEl: HTMLFormElement | undefined;
+  let composerFirstFieldEl: HTMLSelectElement | undefined;
+
   let invoiceProjectId = "";
   let invoiceMilestoneId = "";
   let invoiceIssueDate = today;
@@ -102,6 +106,8 @@
   let loanScheduleDates: string[] = [];
   let loanPreviewSignature = "";
   let busyInstallments = new Set<string>();
+  let pendingPaidInstallmentId: string | null = null;
+  let pendingPaidDate = today;
 
   $: selectedProject =
     projects.find((project) => project.id === invoiceProjectId) ?? null;
@@ -127,6 +133,15 @@
         .map((group) => formatMoney(group.total, group.currency))
         .join(" · ")}`
     : "All-time collected";
+  // Invoice/loan actions can be triggered from far down a long list, while the
+  // notice banner renders once, near the top. Bring it into view whenever its
+  // content changes so feedback is never off-screen from the action.
+  $: if (noticeRegion && (errorMessage || successMessage)) {
+    noticeRegion.scrollIntoView({
+      behavior: motionDuration(1) === 0 ? "auto" : "smooth",
+      block: "nearest",
+    });
+  }
 
   function blankLine(): DraftLine {
     return {
@@ -316,6 +331,7 @@
       invoiceProjectId = projects[0].id;
       applyProjectDefaults();
     }
+    void focusComposer();
   }
 
   function editDraftInvoice(invoice: Invoice): void {
@@ -347,6 +363,7 @@
     }));
     showInvoiceForm = true;
     showLoanForm = false;
+    void focusComposer();
   }
 
   // The backend's milestone_kind CHECK on invoices only allows
@@ -475,6 +492,35 @@
     } finally {
       saving = false;
     }
+  }
+
+  // Enter must never irreversibly issue an invoice: the composer's <form>
+  // submit action is "Save draft" (reversible), so "Create & issue" is a
+  // type="button" that reaches saveInvoice("issued") only through this same
+  // confirmation the invoice list already uses before locking the number and
+  // issue date.
+  function confirmIssueFromComposer(): void {
+    if (saving) return;
+    if (
+      !window.confirm(
+        `Issue ${invoiceNumberPreview}? Its number and issue date will be locked.`,
+      )
+    ) {
+      return;
+    }
+    void saveInvoice("issued");
+  }
+
+  // Scrolls the composer into view and focuses its first field once it has
+  // mounted, so opening it (especially "Edit draft" on an invoice far down
+  // the list) is visibly obvious instead of appearing to do nothing.
+  async function focusComposer(): Promise<void> {
+    await tick();
+    composerFormEl?.scrollIntoView({
+      behavior: motionDuration(1) === 0 ? "auto" : "smooth",
+      block: "start",
+    });
+    composerFirstFieldEl?.focus();
   }
 
   function resetInvoiceForm(): void {
@@ -749,10 +795,23 @@
     loanPreviewSignature = "";
   }
 
+  // Marking an installment paid now reuses the inline type="date" picker
+  // pattern (already used for editing an already-paid installment's date)
+  // instead of a raw window.prompt asking for a typed YYYY-MM-DD string.
+  function beginMarkPaid(installment: { id: string; paidDate: string | null }): void {
+    pendingPaidInstallmentId = installment.id;
+    pendingPaidDate = installment.paidDate ?? today;
+  }
+
+  function cancelMarkPaid(): void {
+    pendingPaidInstallmentId = null;
+  }
+
   async function toggleInstallment(
     loan: PersonalLoan,
     installmentId: string,
     paid: boolean,
+    paidDate: string | null = null,
   ): Promise<void> {
     if (busyInstallments.has(installmentId)) return;
     const installment = loan.installments.find(
@@ -765,18 +824,9 @@
     ) {
       return;
     }
-    let paidDate: string | null = null;
-    if (paid) {
-      const selectedDate = window.prompt(
-        "Paid date (YYYY-MM-DD)",
-        installment?.paidDate ?? today,
-      );
-      if (selectedDate === null) return;
-      paidDate = selectedDate.trim();
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) {
-        errorMessage = "Paid date must use YYYY-MM-DD.";
-        return;
-      }
+    if (paid && (!paidDate || !/^\d{4}-\d{2}-\d{2}$/.test(paidDate))) {
+      errorMessage = "Select a valid paid date.";
+      return;
     }
     busyInstallments = new Set(busyInstallments).add(installmentId);
     errorMessage = "";
@@ -785,9 +835,12 @@
         loanId: loan.id,
         installmentId,
         paid,
-        paidDate,
+        paidDate: paid ? paidDate : null,
       });
       loans = loans.map((item) => (item.id === updated.id ? updated : item));
+      if (paid && pendingPaidInstallmentId === installmentId) {
+        pendingPaidInstallmentId = null;
+      }
     } catch (error) {
       errorMessage = errorText(error, "Installment could not be updated.");
     } finally {
@@ -890,15 +943,7 @@
   });
 </script>
 
-<section class="money-view" aria-labelledby="money-heading">
-  <header class="money-heading">
-    <div>
-      <span class="eyebrow">Invoices and obligations</span>
-      <h2 id="money-heading">Money</h2>
-      <p>Client earnings and personal loans stay deliberately separate.</p>
-    </div>
-  </header>
-
+<section class="money-view" aria-label="Money">
   <StatRow>
     <StatCard
       icon="invoice"
@@ -923,45 +968,20 @@
     />
   </StatRow>
 
-  {#if errorMessage}
-    <div class="notice error" role="alert">
-      <span>{errorMessage}</span>
-      <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>×</button>
-    </div>
-  {/if}
-  {#if successMessage}
-    <div class="notice success" role="status">
-      <span>{successMessage}</span>
-      <button type="button" aria-label="Dismiss message" on:click={() => (successMessage = "")}>×</button>
-    </div>
-  {/if}
-
-  {#if activeTab === "invoices" || activeTab === "loans"}
-    <div class="page-actions">
-      {#if activeTab === "invoices"}
-        <button
-          class="primary-button"
-          type="button"
-          disabled={!projects.length}
-          title={projects.length ? "" : "Create a project in Work first"}
-          on:click={openInvoiceComposer}
-        >
-          <Icon name="invoice" size={15} /> New invoice
-        </button>
-      {:else}
-        <button
-          class="primary-button"
-          type="button"
-          on:click={() => {
-            showLoanForm = true;
-            showInvoiceForm = false;
-          }}
-        >
-          <Icon name="loan" size={15} /> New personal loan
-        </button>
-      {/if}
-    </div>
-  {/if}
+  <div class="notice-region" bind:this={noticeRegion}>
+    {#if errorMessage}
+      <div class="notice error" role="alert">
+        <span>{errorMessage}</span>
+        <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>×</button>
+      </div>
+    {/if}
+    {#if successMessage}
+      <div class="notice success" role="status">
+        <span>{successMessage}</span>
+        <button type="button" aria-label="Dismiss message" on:click={() => (successMessage = "")}>×</button>
+      </div>
+    {/if}
+  </div>
 
   <div class="tabs" role="tablist" aria-label="Money sections">
     <button
@@ -1000,8 +1020,26 @@
       aria-labelledby="money-tab-invoices"
       class="tab-panel"
     >
+      <p class="tab-intro">Client earnings and personal loans stay deliberately separate.</p>
+      <div class="page-actions">
+        <button
+          class="primary-button"
+          type="button"
+          disabled={!projects.length}
+          title={projects.length ? "" : "Create a project in Work first"}
+          on:click={openInvoiceComposer}
+        >
+          <Icon name="invoice" size={15} /> New invoice
+        </button>
+      </div>
+
       {#if showInvoiceForm}
-        <form class="composer" on:submit|preventDefault={() => saveInvoice("issued")} transition:slide={{ duration: motionDuration(180) }}>
+        <form
+          class="composer"
+          bind:this={composerFormEl}
+          on:submit|preventDefault={() => saveInvoice("draft")}
+          transition:slide={{ duration: motionDuration(180) }}
+        >
           <div class="composer-head">
             <div>
               <span class="eyebrow">Milestone billing</span>
@@ -1012,7 +1050,12 @@
           <div class="form-grid">
             <label class="span-2">
               <span>Project</span>
-              <select bind:value={invoiceProjectId} required on:change={applyProjectDefaults}>
+              <select
+                bind:value={invoiceProjectId}
+                bind:this={composerFirstFieldEl}
+                required
+                on:change={applyProjectDefaults}
+              >
                 <option value="" disabled>Select project</option>
                 {#each projects as project}
                   <option value={project.id}>{project.clientName} · {project.name}</option>
@@ -1133,11 +1176,15 @@
             >Cancel</button>
             <button
               class="secondary"
+              type="submit"
+              disabled={saving || !selectedProject || !draftTotals}
+            >{saving ? "Saving…" : "Save draft"}</button>
+            <button
+              class="primary"
               type="button"
               disabled={saving || !selectedProject || !draftTotals}
-              on:click={() => saveInvoice("draft")}
-            >{saving ? "Saving…" : "Save draft"}</button>
-            <button class="primary" type="submit" disabled={saving || !selectedProject || !draftTotals}>
+              on:click={confirmIssueFromComposer}
+            >
               {saving ? "Saving…" : editingInvoiceId ? "Save & issue" : "Create & issue"}
             </button>
           </div>
@@ -1271,6 +1318,19 @@
       aria-labelledby="money-tab-loans"
       class="tab-panel"
     >
+      <div class="page-actions">
+        <button
+          class="primary-button"
+          type="button"
+          on:click={() => {
+            showLoanForm = true;
+            showInvoiceForm = false;
+          }}
+        >
+          <Icon name="loan" size={15} /> New personal loan
+        </button>
+      </div>
+
       {#if showLoanForm}
         <form class="composer" on:submit|preventDefault={saveLoan} transition:slide={{ duration: motionDuration(180) }}>
           <div class="composer-head">
@@ -1374,9 +1434,14 @@
                       type="button"
                       class="check"
                       aria-pressed={installment.paid}
-                      aria-label={`${installment.paid ? "Reopen" : "Mark paid"} installment ${installment.installmentNumber}`}
+                      aria-label={`${installment.paid ? "Reopen" : pendingPaidInstallmentId === installment.id ? "Confirm paid date for" : "Mark paid"} installment ${installment.installmentNumber}`}
                       disabled={busyInstallments.has(installment.id)}
-                      on:click={() => toggleInstallment(loan, installment.id, !installment.paid)}
+                      on:click={() =>
+                        installment.paid
+                          ? toggleInstallment(loan, installment.id, false)
+                          : pendingPaidInstallmentId === installment.id
+                            ? toggleInstallment(loan, installment.id, true, pendingPaidDate)
+                            : beginMarkPaid(installment)}
                     >{installment.paid ? "✓" : ""}</button>
                     <span>Installment {installment.installmentNumber}</span>
                     <label class="inline-date">
@@ -1411,6 +1476,27 @@
                             )}
                         />
                       </label>
+                    {:else if pendingPaidInstallmentId === installment.id}
+                      <label class="inline-date">
+                        <span class="sr-only">Paid date</span>
+                        <input
+                          type="date"
+                          max={today}
+                          value={pendingPaidDate}
+                          disabled={busyInstallments.has(installment.id)}
+                          aria-label={`Paid date for installment ${installment.installmentNumber}`}
+                          on:change={(event) =>
+                            toggleInstallment(
+                              loan,
+                              installment.id,
+                              true,
+                              event.currentTarget.value,
+                            )}
+                          on:keydown={(event) => {
+                            if (event.key === "Escape") cancelMarkPaid();
+                          }}
+                        />
+                      </label>
                     {:else}
                       <small>{installment.dueDate < today ? "Overdue" : "Unpaid"}</small>
                     {/if}
@@ -1434,13 +1520,11 @@
   }
   button, input, select, textarea { font: inherit; }
   button { color: inherit; }
-  .money-heading, .composer-head, .invoice-main, .invoice-card footer, .preview-toolbar {
+  .composer-head, .invoice-main, .invoice-card footer, .preview-toolbar {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
   }
-  .money-heading { margin-bottom: 20px; }
-  .money-heading h2 { font-size: var(--text-24); margin: 3px 0 4px; letter-spacing: -0.03em; }
-  .money-heading p, .composer-head h3 { margin: 0; }
-  .money-heading p { color: var(--text-secondary); font-size: 13px; }
+  .composer-head h3 { margin: 0; }
+  .tab-intro { color: var(--text-secondary); font-size: 13px; margin: 0 0 14px; }
   .primary, .secondary, .text-button, .icon-button {
     border: 0; border-radius: var(--radius-control); cursor: pointer; font-weight: var(--weight-bold);
   }
@@ -1582,7 +1666,7 @@
     .schedule-preview ol { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 620px) {
-    .money-heading, .invoice-card footer, .payment-form { align-items: stretch; flex-direction: column; }
+    .invoice-card footer, .payment-form { align-items: stretch; flex-direction: column; }
     .form-grid, .notes-grid { grid-template-columns: 1fr; }
     .form-grid .span-2 { grid-column: auto; }
     .line-labels { display: none; }
