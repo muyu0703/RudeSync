@@ -63,7 +63,8 @@
   $: clientsById = new Map(clients.map((client) => [client.id, client]));
   $: projectsById = new Map(projects.map((project) => [project.id, project]));
   $: activeProjects = projects.filter((project) => project.status === "active");
-  $: remainingTotals = groupRemainingByCurrency(activeProjects);
+  $: expectedTotals = groupByCurrency(activeProjects, projectTotalMinor);
+  $: remainingTotals = groupByCurrency(activeProjects, remainingToInvoiceMinor);
   $: normalizedSearch = searchQuery.trim().toLocaleLowerCase();
   $: filteredProjects = projects.filter((project) => {
     if (
@@ -326,23 +327,33 @@
       .reduce((sum, milestone) => sum + milestone.amountMinor, 0);
   }
 
-  // Money is per-currency only: each currency's remaining total is kept
-  // separate and never summed with another currency's total.
-  function groupRemainingByCurrency(
+  // Money is per-currency only: each currency's total is kept separate and
+  // never summed with another currency's total.
+  function groupByCurrency(
     values: Project[],
+    amountMinor: (project: Project) => number,
   ): Array<{ currency: string; totalMinor: number }> {
     const totals = new Map<string, number>();
     for (const project of values) {
-      const remaining = remainingToInvoiceMinor(project);
-      if (remaining <= 0) continue;
+      const amount = amountMinor(project);
+      if (amount <= 0) continue;
       totals.set(
         project.currency,
-        (totals.get(project.currency) ?? 0) + remaining,
+        (totals.get(project.currency) ?? 0) + amount,
       );
     }
     return [...totals.entries()]
       .map(([currency, totalMinor]) => ({ currency, totalMinor }))
       .sort((a, b) => a.currency.localeCompare(b.currency));
+  }
+
+  function extraCurrencies(
+    totals: Array<{ currency: string; totalMinor: number }>,
+  ): string {
+    return totals
+      .slice(1)
+      .map((total) => formatMoney(total.totalMinor, total.currency))
+      .join(" · ");
   }
 
   function workForProject(projectId: string): WorkEntry[] {
@@ -387,11 +398,18 @@
       tone="neutral"
     />
     <StatCard
+      icon="money"
+      label="Expected project value"
+      value={expectedTotals.length ? formatMoney(expectedTotals[0].totalMinor, expectedTotals[0].currency) : "None"}
+      detail={expectedTotals.length > 1 ? extraCurrencies(expectedTotals) : "Sum of milestone plans"}
+      tone={expectedTotals.length ? "positive" : "neutral"}
+    />
+    <StatCard
       icon="invoice"
       label="Remaining to invoice"
       value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "None"}
       detail={remainingTotals.length > 1
-        ? remainingTotals.slice(1).map((total) => formatMoney(total.totalMinor, total.currency)).join(" · ")
+        ? extraCurrencies(remainingTotals)
         : "Across active projects"}
       tone={remainingTotals.length ? "warning" : "neutral"}
     />
