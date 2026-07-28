@@ -1360,7 +1360,10 @@
               </div>
               <ol class="installment-list">
                 {#each loan.installments as installment (installment.id)}
-                  <li class:paid={installment.paid}>
+                  <li
+                    class:paid={installment.paid}
+                    class:overdue={!installment.paid && installment.dueDate < today}
+                  >
                     <button
                       type="button"
                       class="check"
@@ -1541,7 +1544,9 @@
   .installment-list li:last-child { border: 0; }
   .installment-list li.paid { color: var(--text-tertiary); }
   .installment-list small { color: var(--text-tertiary); text-align: right; }
-  .installment-list li:not(.paid) small { color: var(--amber); }
+  /* Danger means overdue, and the row already says "Overdue" in words. A merely
+     unpaid installment due months out stays quiet. */
+  .installment-list li.overdue small { color: var(--danger); }
   .inline-date input { min-height: 28px; padding: 4px 7px; font-size: var(--text-11); }
   .check { width: 21px; height: 21px; border: 1px solid var(--separator-strong); background: var(--surface-window); border-radius: var(--radius-control); color: var(--on-accent); cursor: pointer; padding: 0; }
   .check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
