@@ -807,52 +807,54 @@
           </Card>
         </div>
       {:else if active === "tasks"}
-        <div class="page-actions">
-          <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
-          <button
-            class="primary-button"
-            type="button"
-            on:click={() => openTaskEditor()}
-          ><Icon name="plus" size={15} /> New task</button>
-          <button
-            class="primary-button"
-            type="button"
-            on:click={() => void openTaskWidget()}
-          ><Icon name="spark" size={15} /> Pop out widget</button>
-        </div>
-        <Card padded={false}>
-          <SectionHeader slot="header" title="All tasks" subtext={taskFilterSubtext}>
-            <svelte:fragment slot="actions">
-              <div class="segmented" aria-label="Task filters">
-                {#each [["all", "Open"], ["inbox", "Inbox"], ["today", "Today"], ["upcoming", "Upcoming"], ["recurring", "Recurring"], ["categories", "Categories"], ["completed", "Completed"]] as filter}
-                  <button
-                    class:active={taskFilter === filter[0]}
-                    type="button"
-                    aria-pressed={taskFilter === filter[0]}
-                    on:click={() => (taskFilter = filter[0] as TaskFilter)}
-                  >{filter[1]}</button>
+        <div class="page-measure">
+          <div class="page-actions">
+            <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
+            <button
+              class="primary-button"
+              type="button"
+              on:click={() => openTaskEditor()}
+            ><Icon name="plus" size={15} /> New task</button>
+            <button
+              class="primary-button"
+              type="button"
+              on:click={() => void openTaskWidget()}
+            ><Icon name="spark" size={15} /> Pop out widget</button>
+          </div>
+          <Card padded={false}>
+            <SectionHeader slot="header" title="All tasks" subtext={taskFilterSubtext}>
+              <svelte:fragment slot="actions">
+                <div class="segmented" aria-label="Task filters">
+                  {#each [["all", "Open"], ["inbox", "Inbox"], ["today", "Today"], ["upcoming", "Upcoming"], ["recurring", "Recurring"], ["categories", "Categories"], ["completed", "Completed"]] as filter}
+                    <button
+                      class:active={taskFilter === filter[0]}
+                      type="button"
+                      aria-pressed={taskFilter === filter[0]}
+                      on:click={() => (taskFilter = filter[0] as TaskFilter)}
+                    >{filter[1]}</button>
+                  {/each}
+                </div>
+                <label class="inline-search">
+                  <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
+                </label>
+              </svelte:fragment>
+            </SectionHeader>
+            {#if loading}
+              <div class="skeleton-list"><span></span><span></span><span></span></div>
+            {:else if filteredTasks.length}
+              <div class="task-list roomy">
+                {#each filteredTasks as task (task.id)}
+                  <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
                 {/each}
               </div>
-              <label class="inline-search">
-                <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
-              </label>
-            </svelte:fragment>
-          </SectionHeader>
-          {#if loading}
-            <div class="skeleton-list"><span></span><span></span><span></span></div>
-          {:else if filteredTasks.length}
-            <div class="task-list roomy">
-              {#each filteredTasks as task (task.id)}
-                <TaskRow {task} busy={busyTaskIds.has(task.id)} onToggle={toggleTask} onOpen={openTaskEditor} />
-              {/each}
-            </div>
-          {:else}
-            <div class="empty-state large">
-              <span class="empty-icon"><Icon name="tasks" size={22} /></span>
-              <strong>No matching tasks</strong><p>Change the filter or capture a new task with Ctrl N.</p>
-            </div>
-          {/if}
-        </Card>
+            {:else}
+              <div class="empty-state large">
+                <span class="empty-icon"><Icon name="tasks" size={22} /></span>
+                <strong>No matching tasks</strong><p>Change the filter or capture a new task with Ctrl N.</p>
+              </div>
+            {/if}
+          </Card>
+        </div>
       {:else if active === "work"}
         <WorkView
           workPrefill={pendingWorkPrefill}

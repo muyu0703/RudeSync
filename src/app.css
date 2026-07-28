@@ -399,6 +399,10 @@ kbd {
   scrollbar-width: thin;
 }
 
+/* The shared measure. Every screen caps its content at the same width so
+   moving between screens never shifts the layout. */
+.page-measure { max-width: 1120px; margin: 0 auto; }
+
 /* =============================================================
    Today
    ============================================================= */
