@@ -130,7 +130,7 @@
   <footer>
     <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
     <button class="primary" type="submit" form="work-entry-form" disabled={busy || !title.trim() || !workDate}>
-      {busy ? "Saving…" : entry ? "Save changes" : "Record completed work"}
+      {busy ? "保存中…" : entry ? "保存修改" : "记录已完成工作"}
     </button>
   </footer>
 </svelte:fragment>
