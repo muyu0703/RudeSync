@@ -95,7 +95,7 @@
     <footer>
       <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
       <button class="primary" type="submit" form="client-form" disabled={busy || !name.trim() || currency.length !== 3}>
-        {busy ? "Saving…" : client ? "Save changes" : "Create client"}
+        {busy ? "保存中…" : client ? "保存修改" : "创建客户"}
       </button>
     </footer>
   </svelte:fragment>
