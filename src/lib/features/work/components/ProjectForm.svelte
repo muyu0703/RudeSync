@@ -283,7 +283,7 @@
 <form id="project-form" on:submit|preventDefault={submit}>
   <div class="field-grid two">
     <label>
-      <span class="field-label">Client <b aria-hidden="true">*</b></span>
+      <span class="field-label">客户 <b aria-hidden="true">*</b></span>
       <select class="field-input" bind:value={clientId} data-work-autofocus required>
         {#each clients as client (client.id)}
           <option value={client.id}>{client.name} · {client.currency}</option>
@@ -304,7 +304,7 @@
   </div>
 
   <label>
-    <span class="field-label">Project name <b aria-hidden="true">*</b></span>
+    <span class="field-label">项目名称 <b aria-hidden="true">*</b></span>
     <input class="field-input" bind:value={name} maxlength="160" required />
   </label>
 
@@ -325,8 +325,7 @@
         />
       </div>
       <small id="project-quote-help" class="field-hint">
-        Optional reference · seeds the Kickoff + Completion template. The
-        project total is the sum of its milestones.
+        可选参考金额；会用于初始化“启动款 + 尾款”模板。项目总额为所有里程碑金额之和。
       </small>
     </label>
     <label>
