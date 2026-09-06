@@ -24,6 +24,7 @@ mod domain;
 mod finance;
 mod invoice_pdf;
 mod notifications;
+mod reminder_center;
 mod settings;
 
 const INITIAL_MIGRATION: &str = include_str!("../migrations/0001_initial.sql");
@@ -1596,6 +1597,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 fn start_notification_worker(app: AppHandle) {
     thread::spawn(move || loop {
         let _ = notifications::dispatch_due_notifications(&app);
+        let _ = reminder_center::dispatch_due(&app);
         let database = app.state::<Database>();
         let _ = settings::run_backup_if_due(&database);
         thread::sleep(Duration::from_secs(60));
@@ -1626,6 +1628,7 @@ pub fn run() {
             fs::create_dir_all(&data_directory)?;
             let database_path = data_directory.join("rudesync.sqlite3");
             let database = Database::open(database_path)?;
+            reminder_center::ensure_schema(&database)?;
             app.manage(database);
             start_notification_worker(app.handle().clone());
 
@@ -1703,7 +1706,16 @@ pub fn run() {
             settings::update_invoice_profile,
             settings::run_backup,
             settings::run_manual_backup,
-            settings::restore_backup
+            settings::restore_backup,
+            reminder_center::list_reminder_center,
+            reminder_center::create_alarm,
+            reminder_center::create_timer,
+            reminder_center::pause_timer,
+            reminder_center::resume_timer,
+            reminder_center::reset_timer,
+            reminder_center::acknowledge_reminder,
+            reminder_center::snooze_reminder,
+            reminder_center::delete_reminder_center
         ])
         .run(tauri::generate_context!())
         .expect("RudeSync failed to start");
