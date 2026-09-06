@@ -130,7 +130,7 @@
         return [] as Invoice[];
       });
       [clients, projects, workEntries, invoices] = await Promise.all([
-        service.listClients(),
+        service.list客户(),
         service.listProjects(),
         service.listWorkEntries(),
         invoicesPromise,
@@ -224,7 +224,7 @@
     if (saving) return;
     if (
       !window.confirm(
-        `Delete ${client.name}? This cannot be undone.`,
+        `删除 ${client.name}? This cannot be undone.`,
       )
     ) {
       return;
@@ -246,7 +246,7 @@
     if (saving) return;
     if (
       !window.confirm(
-        `Delete ${project.name}? This cannot be undone.`,
+        `删除 ${project.name}? This cannot be undone.`,
       )
     ) {
       return;
@@ -267,7 +267,7 @@
     if (saving) return;
     if (
       !window.confirm(
-        `Delete "${entry.title}"? This cannot be undone.`,
+        `删除 "${entry.title}"? This cannot be undone.`,
       )
     ) {
       return;
@@ -466,25 +466,25 @@
   }
 </script>
 
-<section class="work-view" aria-label="Clients and project work" aria-busy={loading}>
+<section class="work-view" aria-label="客户 and project work" aria-busy={loading}>
   <StatRow>
     <StatCard
       icon="briefcase"
-      label="Active projects"
+      label="进行中的项目"
       value={String(activeProjects.length)}
-      detail="In flight"
+      detail="进行中"
       tone="neutral"
     />
     <StatCard
       icon="money"
-      label="Expected project value"
+      label="预计项目金额"
       value={expectedTotals.length ? formatMoney(expectedTotals[0].totalMinor, expectedTotals[0].currency) : "None"}
       detail={expectedTotals.length > 1 ? extraCurrencies(expectedTotals) : "Sum of milestone plans"}
       tone={expectedTotals.length ? "positive" : "neutral"}
     />
     <StatCard
       icon="invoice"
-      label="Remaining to invoice"
+      label="待开票金额"
       value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "None"}
       detail={remainingTotals.length > 1
         ? extraCurrencies(remainingTotals)
@@ -525,11 +525,11 @@
       <div class="list-header">
         <SectionHeader
           title={`${filteredProjects.length} ${filteredProjects.length === 1 ? "project" : "projects"}`}
-          subtext="Fixed price · no timers"
+          subtext="固定报价 · 不计时"
         >
           <svelte:fragment slot="actions">
             {#if clients.length}
-              <div class="segmented" aria-label="Filter projects by client">
+              <div class="segmented" aria-label="按客户筛选项目">
                 <button
                   class:active={selectedClientId === "all"}
                   type="button"
@@ -551,8 +551,8 @@
               <input
                 bind:value={searchQuery}
                 type="search"
-                placeholder="Search projects or clients"
-                aria-label="Search projects or clients"
+                placeholder="搜索项目或客户"
+                aria-label="搜索项目或客户"
               />
             </label>
           </svelte:fragment>
@@ -560,7 +560,7 @@
       </div>
 
       {#if loading}
-        <div class="skeleton-list project-skeletons" aria-label="Loading projects">
+        <div class="skeleton-list project-skeletons" aria-label="正在加载项目">
           <span></span><span></span><span></span>
         </div>
       {:else if filteredProjects.length}
@@ -578,7 +578,7 @@
 
               <div class="project-summary">
                 <div>
-                  <span>Contract value</span>
+                  <span>合同金额</span>
                   <strong>{formatMoney(projectTotalMinor(project), project.currency)}</strong>
                 </div>
                 <div>
@@ -610,7 +610,7 @@
                 </div>
               {/if}
 
-              <span class="group-label">Invoice milestones</span>
+              <span class="group-label">开票里程碑</span>
               <div class="milestone-list" aria-label={`${project.name} invoice milestones`}>
                 {#each project.milestones as milestone, index (milestone.id ?? `${project.id}-${milestone.kind}-${index}`)}
                   <MeterBar
@@ -630,7 +630,7 @@
 
               <section class="project-billing" aria-label={`${project.name} invoices and payments`}>
                 <header>
-                  <span class="group-label">Invoices and payments</span>
+                  <span class="group-label">发票与收款</span>
                   <b>{projectInvoices.length} {projectInvoices.length === 1 ? "invoice" : "invoices"}</b>
                 </header>
                 {#if projectInvoices.length}
@@ -676,29 +676,29 @@
                     {/each}
                   </div>
                 {:else}
-                  <p transition:slide={{ duration: motionDuration(180) }}>No invoices are attached to this project yet.</p>
+                  <p transition:slide={{ duration: motionDuration(180) }}>此项目暂时没有关联发票。</p>
                 {/if}
               </section>
 
               {#if projectWork.length}
                 <div class="project-work" transition:slide={{ duration: motionDuration(180) }}>
-                  <span class="group-label">Recent completed work</span>
+                  <span class="group-label">最近完成的工作</span>
                   {#each projectWork.slice(0, 2) as entry (entry.id)}
                     <div class="mini-work-entry">
                       <span class="work-check"><Icon name="check" size={11} strokeWidth={2.3} /></span>
                       <strong>{entry.title}</strong>
                       <time datetime={entry.workDate}>{formatDate(entry.workDate)}</time>
-                      <button type="button" aria-label={`Edit ${entry.title}`} on:click={() => editWorkEntry(entry)}>
-                        Edit
+                      <button type="button" aria-label={`编辑 ${entry.title}`} on:click={() => editWorkEntry(entry)}>
+                        编辑
                       </button>
                       <button
                         class="danger"
                         type="button"
-                        aria-label={`Delete ${entry.title}`}
+                        aria-label={`删除 ${entry.title}`}
                         disabled={saving}
                         on:click={() => deleteWorkEntry(entry)}
                       >
-                        Delete
+                        删除
                       </button>
                     </div>
                   {/each}
@@ -712,10 +712,10 @@
                 </span>
                 <div>
                   <button class="text-button" type="button" on:click={() => openProjectDialog(project)}>
-                    <Icon name="edit" size={13} /> Edit
+                    <Icon name="edit" size={13} /> 编辑
                   </button>
                   <button class="text-button" type="button" on:click={() => openWorkDialog(project.id)}>
-                    <Icon name="plus" size={13} /> Add work
+                    <Icon name="plus" size={13} /> 添加工作
                   </button>
                   <button
                     class="text-button danger"
@@ -723,7 +723,7 @@
                     disabled={saving}
                     on:click={() => deleteProject(project)}
                   >
-                    <Icon name="x" size={13} /> Delete
+                    <Icon name="x" size={13} /> 删除
                   </button>
                 </div>
               </footer>
@@ -733,27 +733,27 @@
       {:else if !clients.length}
         <div class="empty-state large">
           <span class="empty-icon"><Icon name="briefcase" size={21} /></span>
-          <strong>Start with a client</strong>
-          <p>Clients organize your fixed-price projects, invoices, and completed work.</p>
+          <strong>先添加客户</strong>
+          <p>客户用于整理固定报价项目、发票和已完成工作。</p>
           <button class="primary-button" type="button" on:click={() => openClientDialog()}>
-            <Icon name="plus" size={14} /> Add your first client
+            <Icon name="plus" size={14} /> 添加第一个客户
           </button>
         </div>
       {:else if !projects.length}
         <div class="empty-state large">
           <span class="empty-icon"><Icon name="briefcase" size={21} /></span>
-          <strong>Create the first project container</strong>
-          <p>It starts with an editable 50% kickoff and 50% completion plan.</p>
+          <strong>创建第一个项目</strong>
+          <p>默认采用可编辑的 50% 启动款 + 50% 尾款方案。</p>
           <button class="primary-button" type="button" on:click={() => openProjectDialog()}>
-            <Icon name="plus" size={14} /> Create project
+            <Icon name="plus" size={14} /> 创建项目
           </button>
         </div>
       {:else}
         <div class="empty-state compact">
           <span class="empty-icon"><Icon name="search" size={19} /></span>
           <div>
-            <strong>No matching projects</strong>
-            <p>Clear the search or choose a different client.</p>
+            <strong>没有匹配的项目</strong>
+            <p>清除搜索条件或选择其他客户。</p>
             <button
               class="text-button"
               type="button"
@@ -761,7 +761,7 @@
                 searchQuery = "";
                 selectedClientId = "all";
               }}
-            >Clear filters</button>
+            >清除筛选</button>
           </div>
         </div>
       {/if}
@@ -769,9 +769,9 @@
 
     <aside class="side-stack">
       <Card padded={false}>
-        <SectionHeader slot="header" title="Clients" subtext="Relationships">
+        <SectionHeader slot="header" title="客户" subtext="客户关系">
           <svelte:fragment slot="actions">
-            <button class="text-button" type="button" aria-label="Add client" on:click={() => openClientDialog()}>
+            <button class="text-button" type="button" aria-label="添加客户" on:click={() => openClientDialog()}>
               <Icon name="plus" size={14} />
             </button>
           </svelte:fragment>
@@ -793,15 +793,15 @@
                   <span class="client-avatar">{client.name.slice(0, 2).toUpperCase()}</span>
                   <span class="client-copy">
                     <strong>{client.name}</strong>
-                    <small>{client.companyName ?? `${projectCount(client.id)} projects`}</small>
+                    <small>{client.companyName ?? `${projectCount(client.id)} 个项目`}</small>
                   </span>
                   <b>{client.currency}</b>
                 </button>
                 <button
                   class="client-edit"
                   type="button"
-                  aria-label={`Edit ${client.name}`}
-                  title={`Edit ${client.name}`}
+                  aria-label={`编辑 ${client.name}`}
+                  title={`编辑 ${client.name}`}
                   on:click={() => openClientDialog(client)}
                 >
                   <Icon name="edit" size={14} />
@@ -809,8 +809,8 @@
                 <button
                   class="client-edit danger"
                   type="button"
-                  aria-label={`Delete ${client.name}`}
-                  title={`Delete ${client.name}`}
+                  aria-label={`删除 ${client.name}`}
+                  title={`删除 ${client.name}`}
                   disabled={saving}
                   on:click={() => deleteClient(client)}
                 >
@@ -820,17 +820,17 @@
             {/each}
           </div>
         {:else}
-          <p class="side-empty">No clients yet.</p>
+          <p class="side-empty">暂无客户。</p>
         {/if}
       </Card>
 
       <Card padded={false}>
-        <SectionHeader slot="header" title="Recent records" subtext="Completed work">
+        <SectionHeader slot="header" title="最近记录" subtext="已完成工作">
           <svelte:fragment slot="actions">
             <button
               class="text-button"
               type="button"
-              aria-label="Record completed work"
+              aria-label="记录已完成工作"
               on:click={() => openWorkDialog()}
             >
               <Icon name="plus" size={14} />
@@ -864,8 +864,8 @@
                 <button
                   class="entry-edit"
                   type="button"
-                  aria-label={`Edit ${entry.title}`}
-                  title={`Edit ${entry.title}`}
+                  aria-label={`编辑 ${entry.title}`}
+                  title={`编辑 ${entry.title}`}
                   on:click={() => editWorkEntry(entry)}
                 >
                   <Icon name="edit" size={13} />
@@ -873,8 +873,8 @@
                 <button
                   class="entry-edit danger"
                   type="button"
-                  aria-label={`Delete ${entry.title}`}
-                  title={`Delete ${entry.title}`}
+                  aria-label={`删除 ${entry.title}`}
+                  title={`删除 ${entry.title}`}
                   disabled={saving}
                   on:click={() => deleteWorkEntry(entry)}
                 >
@@ -885,8 +885,8 @@
           </div>
         {:else}
           <div class="side-empty">
-            <p>Finished something? Keep a lightweight record of it here.</p>
-            <button class="text-button" type="button" on:click={() => openWorkDialog()}>Record work</button>
+            <p>完成了一项工作？可以在这里快速记录。</p>
+            <button class="text-button" type="button" on:click={() => openWorkDialog()}>记录工作</button>
           </div>
         {/if}
       </Card>
@@ -896,7 +896,7 @@
 
 {#if dialog === "client"}
   <ClientForm
-    dialogTitle={editingClient ? "Edit client" : "New client"}
+    dialogTitle={editingClient ? "编辑 client" : "New client"}
     dialogDescription={editingClient
       ? "Correct contact, billing, currency, or private notes. Issued invoices keep their original snapshot."
       : "Create the relationship once, then keep every project and invoice organized beneath it."}
@@ -908,7 +908,7 @@
   />
 {:else if dialog === "project"}
   <ProjectForm
-    dialogTitle={editingProject ? "Edit fixed-price project" : "New fixed-price project"}
+    dialogTitle={editingProject ? "编辑 fixed-price project" : "New fixed-price project"}
     dialogDescription={editingProject
       ? "Correct value, status, dates, notes, links, or milestone split. Existing invoices remain unchanged."
       : "The project is the container for milestones, completed work, invoices, and payments."}
@@ -921,7 +921,7 @@
   />
 {:else if dialog === "work"}
   <WorkEntryForm
-    dialogTitle={editingWorkEntry ? "Edit completed work" : "Record completed work"}
+    dialogTitle={editingWorkEntry ? "编辑 completed work" : "记录已完成工作"}
     dialogDescription={editingWorkEntry
       ? "Correct the project, date, result, details, or reference URLs."
       : "Capture the result, not the hours. URLs stay as lightweight references."}
