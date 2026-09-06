@@ -560,7 +560,7 @@
           <SectionHeader
             slot="header"
             title="外观"
-            subtext="设置 RudeSync 在本机上的动画效果。"
+            subtext="设置动画和悬浮窗显示方式。"
           >
             <svelte:fragment slot="actions">
               <span class="soft-badge" title="此项会自动保存，无需点击下方保存按钮。">立即生效</span>
