@@ -469,7 +469,7 @@
   }
 
   dialog::backdrop {
-    background: rgb(2 7 6 / 78%);
+    background: rgb(98 104 112 / 30%);
     backdrop-filter: blur(5px);
   }
 
@@ -536,7 +536,7 @@
   }
 
   select.field-input {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   .subtasks {
