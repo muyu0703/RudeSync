@@ -39,6 +39,7 @@
   async function loadAll(): Promise<void> {
     try {
       [tasks, reminders] = await Promise.all([service.listTasks(), reminderCenter.list()]);
+      now = Date.now();
       error = "";
     } catch (value) {
       error = normalizeError(value);
