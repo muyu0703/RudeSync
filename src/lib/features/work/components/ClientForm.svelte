@@ -49,7 +49,7 @@
   <form id="client-form" on:submit|preventDefault={submit}>
     <div class="field-grid two">
       <label>
-        <span class="field-label">Client name <b aria-hidden="true">*</b></span>
+        <span class="field-label">客户名称 <b aria-hidden="true">*</b></span>
         <input class="field-input" bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
       </label>
       <label>
