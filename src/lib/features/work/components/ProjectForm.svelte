@@ -410,7 +410,7 @@
           <span class="template-confirm-label">
             {replaceableMilestoneCount > 0
               ? `Replace ${replaceableMilestoneCount} milestone${replaceableMilestoneCount === 1 ? "" : "s"}?`
-              : "Add template? Billed milestones will be kept."}
+              : "添加模板吗？已开票的里程碑会保留。"}
           </span>
           <button class="danger-solid" type="button" on:click={applyTemplate}>
             Replace
@@ -504,7 +504,7 @@
   <footer>
     <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
     <button class="primary" type="submit" form="project-form" disabled={busy || formInvalid}>
-      {busy ? "Saving…" : project ? "Save changes" : "Create project"}
+      {busy ? "保存中…" : project ? "保存修改" : "创建项目"}
     </button>
   </footer>
 </svelte:fragment>
