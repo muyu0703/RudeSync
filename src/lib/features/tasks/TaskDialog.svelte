@@ -345,7 +345,7 @@
         </label>
 
         <label class="field span-2">
-          <span class="field-label">Project <small>可选</small></span>
+          <span class="field-label">项目 <small>可选</small></span>
           <select class="field-input" bind:value={projectId}>
             <option value="">个人 / 无项目</option>
             {#each projects as project (project.id)}
