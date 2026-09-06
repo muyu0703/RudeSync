@@ -507,7 +507,7 @@
     const invoke =
       tauri.__TAURI_INTERNALS__?.invoke ?? tauri.__TAURI__?.core?.invoke;
     if (!invoke) {
-      errorMessage = "The task widget is only available in the desktop app.";
+      errorMessage = "悬浮待办仅在桌面版中可用。";
       return;
     }
     errorMessage = "";
@@ -517,7 +517,7 @@
       errorMessage =
         error instanceof Error
           ? error.message
-          : "The task widget could not be opened.";
+          : "无法打开悬浮待办窗口。";
     }
   }
 
@@ -810,7 +810,7 @@
             <Card>
               <SectionHeader slot="header" title="今日进度" />
               <MeterBar
-                label="Tasks completed"
+                label="已完成任务"
                 value={completedToday.length}
                 max={todayProgressTotal}
                 detail={`${todayTasks.length} still open today`}
