@@ -600,7 +600,7 @@
             </label>
 
             <div class="field">
-              <label class="field-label" for="backup-folder">Backup folder</label>
+              <label class="field-label" for="backup-folder">备份文件夹</label>
               <div class="path-control">
                 <input
                   id="backup-folder"
@@ -620,7 +620,7 @@
               <small id="backup-folder-help" class="field-hint">
                 {service.isDesktop
                   ? "自动备份会保存在此文件夹；手动备份可另存到其他位置。"
-                  : "Browser preview downloads a portable JSON backup instead."}
+                  : "浏览器预览模式会下载可迁移的 JSON 备份文件。"}
               </small>
             </div>
           </div>
