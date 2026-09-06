@@ -303,7 +303,7 @@
     try {
       tasks = await taskService.listTasks();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Tasks could not be loaded.";
+      errorMessage = error instanceof Error ? error.message : "无法加载任务。";
     } finally {
       loading = false;
     }
@@ -393,7 +393,7 @@
       await tick();
       quickInput?.focus();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Task could not be created.";
+      errorMessage = error instanceof Error ? error.message : "无法创建任务。";
     } finally {
       saving = false;
     }
@@ -405,7 +405,7 @@
     if (needsSubtaskCompletionConfirmation(task, completing)) {
       const unfinished = unfinishedSubtaskCount(task);
       const confirmed = window.confirm(
-        `${unfinished} ${unfinished === 1 ? "subtask is" : "subtasks are"} still unfinished. Complete the parent task anyway?`,
+        `还有 ${unfinished} 个子任务未完成。仍然完成主任务吗？`,
       );
       if (!confirmed) return;
     }
@@ -421,7 +421,7 @@
       if (
         shouldOfferCompletedWork(task, completing) &&
         window.confirm(
-          `"${updated.title}" is complete. Record it as completed work?`,
+          `“${updated.title}”已完成。是否记录为已完成工作？`,
         )
       ) {
         pendingWorkPrefill = {
@@ -434,7 +434,7 @@
         active = "work";
       }
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Task could not be updated.";
+      errorMessage = error instanceof Error ? error.message : "无法更新任务。";
     } finally {
       const nextBusyIds = new Set(busyTaskIds);
       nextBusyIds.delete(task.id);
@@ -447,7 +447,7 @@
       active === "settings" &&
       section !== "settings" &&
       settingsHasChanges &&
-      !window.confirm("Discard your unsaved settings changes?")
+      !window.confirm("放弃未保存的设置修改吗？")
     ) {
       return;
     }
@@ -455,7 +455,7 @@
       active === "money" &&
       section !== "money" &&
       moneyHasChanges &&
-      !window.confirm("Discard your unsaved money changes?")
+      !window.confirm("放弃未保存的财务修改吗？")
     ) {
       return;
     }
@@ -556,7 +556,7 @@
       editingTask = null;
     } catch (error) {
       errorMessage =
-        error instanceof Error ? error.message : "Task could not be saved.";
+        error instanceof Error ? error.message : "无法保存任务。";
     } finally {
       taskDialogSaving = false;
     }
@@ -579,7 +579,7 @@
         tasks.find((task) => task.id === editingTask?.id) ?? editingTask;
     } catch (error) {
       errorMessage =
-        error instanceof Error ? error.message : "Subtask could not be updated.";
+        error instanceof Error ? error.message : "无法更新子任务。";
     } finally {
       taskDialogSaving = false;
     }
@@ -595,7 +595,7 @@
       errorMessage =
         error instanceof Error
           ? error.message
-          : "The invoice could not be exported.";
+          : "无法导出发票。";
     }
   }
 
@@ -853,7 +853,7 @@
           <Card>
             <SectionHeader
               slot="header"
-              title="Completed"
+              title="已完成"
               subtext="最近14天每日完成任务"
             />
             <BarChart
