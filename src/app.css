@@ -29,12 +29,12 @@
   /* --- Surfaces --------------------------------------------- */
   /* Deep forest: the ground reads green, but stays dark enough that the
      emerald accent still functions as a signal rather than blending in. */
-  --surface-window: #070d0a;
-  --surface-content: #0d1712;
-  --surface-raised: #142019;
-  --surface-overlay: #1a2820;
-  --surface-hover: rgb(255 255 255 / 0.045);
-  --surface-active: rgb(255 255 255 / 0.075);
+  --surface-window: #f7f4f2;
+  --surface-content: #fffdfb;
+  --surface-raised: #f2f5f3;
+  --surface-overlay: #fffdfb;
+  --surface-hover: rgb(111 124 136 / 0.065);
+  --surface-active: rgb(157 184 176 / 0.16);
 
   /* Legacy aliases, kept so existing rules resolve during the rollout. */
   --surface-0: var(--surface-window);
@@ -42,37 +42,37 @@
   --surface-2: var(--surface-content);
 
   /* --- Text: white with alpha, so it composites over translucency --- */
-  --text-primary: rgb(255 255 255 / 0.92);
-  --text-secondary: rgb(255 255 255 / 0.56);
-  --text-tertiary: rgb(255 255 255 / 0.38);
-  --text-quaternary: rgb(255 255 255 / 0.26);
+  --text-primary: #4c5563;
+  --text-secondary: #727b86;
+  --text-tertiary: #939aa3;
+  --text-quaternary: #b0b5bb;
   --text-muted: var(--text-secondary);
   --text-faint: var(--text-tertiary);
 
   /* --- Separators: hairlines, never heavy borders ------------ */
-  --separator: rgb(255 255 255 / 0.08);
-  --separator-strong: rgb(255 255 255 / 0.14);
+  --separator: rgb(111 124 136 / 0.12);
+  --separator-strong: rgb(111 124 136 / 0.22);
   --border-subtle: var(--separator);
   --border-strong: var(--separator-strong);
 
   /* --- Accent ------------------------------------------------ */
-  --accent: #3ddc84;
-  --accent-hover: #55e695;
-  --accent-pressed: #2fc873;
-  --accent-fill: rgb(61 220 132 / 0.14);
-  --accent-line: rgb(61 220 132 / 0.28);
+  --accent: #9dbeb4;
+  --accent-hover: #8eb2a7;
+  --accent-pressed: #7fa59a;
+  --accent-fill: rgb(157 190 180 / 0.18);
+  --accent-line: rgb(157 190 180 / 0.36);
   --accent-bright: var(--accent-hover);
   --accent-soft: var(--accent-fill);
   --accent-border: var(--accent-line);
-  --on-accent: #08170e;
+  --on-accent: #3f4d49;
 
   /* --- Status ------------------------------------------------ */
-  --amber: #e3b341;
-  --amber-fill: rgb(227 179 65 / 0.14);
+  --amber: #d3b27e;
+  --amber-fill: rgb(211 178 126 / 0.17);
   --amber-soft: var(--amber-fill);
-  --danger: #ff6961;
-  --danger-fill: rgb(255 105 97 / 0.14);
-  --blue: #6ba7f5;
+  --danger: #d88989;
+  --danger-fill: rgb(216 137 137 / 0.16);
+  --blue: #9fb8d1;
 
   /* --- Data visualisation ------------------------------------ */
   /* Charts use the "emphasis" form: one hue plus a neutral track, never a set
@@ -82,7 +82,7 @@
      managed only 7.2, inside the failing band). The track is a green-cast
      grey so it belongs to the deep-forest ground while still reading neutral. */
   --viz-fill: var(--accent);
-  --viz-track: #33403a;
+  --viz-track: #d9dfdc;
   --viz-grid: var(--separator);
 
   /* --- Radius: four values, applied consistently ------------- */
@@ -102,9 +102,9 @@
   --space-10: 40px;
 
   /* --- Elevation: soft and wide, no hard black -------------- */
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.28);
-  --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.36);
-  --shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.44);
+  --shadow-raised: 0 1px 3px rgb(76 83 95 / 0.09);
+  --shadow-popover: 0 10px 28px rgb(76 83 95 / 0.14);
+  --shadow-sheet: 0 24px 64px rgb(76 83 95 / 0.18);
 
   /* --- Motion: brief and eased, per macOS ------------------- */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -120,7 +120,7 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -137,7 +137,7 @@ body {
 /* Window translucency was removed: WebView2 renders over the DWM backdrop and
    making the window transparent produced artifacts. Depth comes from the
    surface ramp and elevation instead. */
-body.has-window-effect .sidebar { background: rgb(0 0 0 / 0.22); }
+body.has-window-effect .sidebar { background: rgb(255 255 255 / 0.28); }
 
 h1, h2, h3, h4 { margin: 0; font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 h1 { font-size: var(--text-20); }
@@ -183,7 +183,7 @@ kbd { font-variant-numeric: tabular-nums; }
   height: 100%;
   flex-direction: column;
   padding: var(--space-3) var(--space-2) var(--space-2);
-  background: rgb(0 0 0 / 0.12);
+  background: rgb(238 242 240 / 0.72);
   border-right: 1px solid var(--separator);
 }
 
