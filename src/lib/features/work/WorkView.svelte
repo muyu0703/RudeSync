@@ -466,7 +466,7 @@
   }
 </script>
 
-<section class="work-view" aria-label="客户 and project work" aria-busy={loading}>
+<section class="work-view" aria-label="客户与项目工作" aria-busy={loading}>
   <StatRow>
     <StatCard
       icon="briefcase"
@@ -496,7 +496,7 @@
   {#if errorMessage}
     <div class="work-error" role="alert">
       <span>{errorMessage}</span>
-      <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>
+      <button type="button" aria-label="关闭错误提示" on:click={() => (errorMessage = "")}>
         <Icon name="x" size={14} />
       </button>
     </div>
@@ -582,7 +582,7 @@
                   <strong>{formatMoney(projectTotalMinor(project), project.currency)}</strong>
                 </div>
                 <div>
-                  <span>Remaining to invoice</span>
+                  <span>待开票金额</span>
                   <strong>{formatMoney(remainingToInvoiceMinor(project), project.currency)}</strong>
                 </div>
               </div>
