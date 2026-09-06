@@ -24,7 +24,7 @@
     // The form's own Cancel button calls `onClose` directly and stays a
     // no-questions exit — only these ambient dismiss paths get a
     // confirmation, and only when there is something to lose.
-    if (dirty && !window.confirm("Discard your changes? What you've typed will be lost.")) {
+    if (dirty && !window.confirm("放弃修改吗？已输入的内容会丢失。")) {
       return;
     }
     if (dialog.open) dialog.close();
@@ -66,7 +66,7 @@
           <p id="work-dialog-description">{description}</p>
         {/if}
       </div>
-      <button class="close-button" type="button" aria-label="Close dialog" on:click={close}>
+      <button class="close-button" type="button" aria-label="关闭窗口" on:click={close}>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="m6 6 12 12M18 6 6 18"></path>
         </svg>
