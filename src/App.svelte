@@ -766,12 +766,12 @@
               </svelte:fragment>
             </SectionHeader>
             {#if loading}
-              <div class="skeleton-list" aria-label="Loading tasks"><span></span><span></span><span></span></div>
+              <div class="skeleton-list" aria-label="正在加载任务"><span></span><span></span><span></span></div>
             {:else if overdueTasks.length || todayTasks.length}
               <div class="task-list">
                 {#if overdueTasks.length}
                   <div class="task-group-heading overdue">
-                    <span>Overdue</span><b>{overdueTasks.length}</b>
+                    <span>已逾期</span><b>{overdueTasks.length}</b>
                   </div>
                   {#each overdueTasks as task (task.id)}
                     <div
@@ -785,7 +785,7 @@
                 {/if}
                 {#if todayTasks.length}
                   <div class="task-group-heading">
-                    <span>Today</span><b>{todayTasks.length}</b>
+                    <span>今天</span><b>{todayTasks.length}</b>
                   </div>
                   {#each todayTasks as task (task.id)}
                     <div
@@ -808,7 +808,7 @@
 
           <aside class="side-stack">
             <Card>
-              <SectionHeader slot="header" title="Today’s progress" />
+              <SectionHeader slot="header" title="今日进度" />
               <MeterBar
                 label="Tasks completed"
                 value={completedToday.length}
@@ -995,7 +995,7 @@
           <Card>
             <SectionHeader
               slot="header"
-              title="Daily rhythm"
+              title="每日节奏"
               subtext="Tasks finished each day this week"
             />
             <BarChart
@@ -1028,7 +1028,7 @@
           {:else}
             <div class="empty-state compact">
               <span class="empty-icon"><Icon name="calendar" size={19} /></span>
-              <div><strong>安排下一步</strong><p>即将到来的任务 will appear here.</p></div>
+              <div><strong>安排下一步</strong><p>即将到来的任务会显示在这里。</p></div>
             </div>
           {/if}
         </section>
