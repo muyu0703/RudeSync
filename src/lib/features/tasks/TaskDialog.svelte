@@ -288,7 +288,7 @@
           <span class="eyebrow">{task ? "Refine the plan" : "Capture the work"}</span>
           <h2 id="task-dialog-title">{task ? "Edit task" : "New task"}</h2>
         </div>
-        <button class="icon-close" type="button" aria-label="Close task editor" on:click={close}>
+        <button class="icon-close" type="button" aria-label="关闭任务编辑器" on:click={close}>
           <Icon name="x" size={17} />
         </button>
       </header>
@@ -296,58 +296,58 @@
       <div class="dialog-body">
       <form id="task-dialog-form" on:submit|preventDefault={submit}>
         <label class="field span-2">
-          <span class="field-label">Task title</span>
+          <span class="field-label">任务标题</span>
           <input
             class="field-input"
             bind:this={titleInput}
             bind:value={title}
             maxlength="240"
             autocomplete="off"
-            placeholder="Ship the client dashboard"
+            placeholder="例如：检查抖店推广数据"
           />
         </label>
 
         <label class="field span-2">
-          <span class="field-label">Notes <small>optional</small></span>
+          <span class="field-label">Notes <small>可选</small></span>
           <textarea
             class="field-textarea"
             bind:value={notes}
             rows="3"
             maxlength="20000"
-            placeholder="Context, acceptance criteria, or the next concrete action"
+            placeholder="补充说明、执行要求或下一步动作"
           ></textarea>
         </label>
 
         <label class="field">
-          <span class="field-label">Planned date</span>
+          <span class="field-label">计划日期</span>
           <input class="field-input" bind:value={plannedDate} type="date" />
         </label>
 
         <label class="field">
-          <span class="field-label">Deadline</span>
+          <span class="field-label">截止日期</span>
           <input class="field-input" bind:value={dueDate} type="date" />
         </label>
 
         <label class="field">
-          <span class="field-label">Priority</span>
+          <span class="field-label">优先级</span>
           <select class="field-input" bind:value={priority}>
-            <option value="none">None</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+            <option value="none">无</option>
+            <option value="low">低</option>
+            <option value="medium">中</option>
+            <option value="high">高</option>
+            <option value="urgent">紧急</option>
           </select>
         </label>
 
         <label class="field">
-          <span class="field-label">Category</span>
-          <input class="field-input" bind:value={category} maxlength="80" placeholder="Client work" />
+          <span class="field-label">分类</span>
+          <input class="field-input" bind:value={category} maxlength="80" placeholder="例如：店铺运营" />
         </label>
 
         <label class="field span-2">
-          <span class="field-label">Project <small>optional</small></span>
+          <span class="field-label">Project <small>可选</small></span>
           <select class="field-input" bind:value={projectId}>
-            <option value="">Personal / no project</option>
+            <option value="">个人 / 无项目</option>
             {#each projects as project (project.id)}
               <option value={project.id}>{project.clientName} — {project.name}</option>
             {/each}
@@ -355,40 +355,40 @@
         </label>
 
         <label class="field">
-          <span class="field-label">Repeats</span>
+          <span class="field-label">重复</span>
           <select class="field-input" bind:value={recurrence}>
-            <option value="none">Does not repeat</option>
-            <option value="daily">Daily</option>
-            <option value="weekdays">Weekdays</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="custom">Custom rule</option>
+            <option value="none">不重复</option>
+            <option value="daily">每天</option>
+            <option value="weekdays">工作日</option>
+            <option value="weekly">每周</option>
+            <option value="monthly">每月</option>
+            <option value="custom">自定义规则</option>
           </select>
         </label>
 
         <label class="field">
-          <span class="field-label">Reminder</span>
+          <span class="field-label">提醒</span>
           <input class="field-input" bind:value={reminderLocal} type="datetime-local" />
         </label>
 
         {#if recurrence === "custom"}
           <label class="field">
-            <span class="field-label">Repeat every</span>
+            <span class="field-label">每隔</span>
             <input class="field-input" bind:value={customInterval} type="number" min="1" max="365" />
           </label>
           <label class="field">
-            <span class="field-label">Interval</span>
+            <span class="field-label">周期</span>
             <select class="field-input" bind:value={customUnit}>
-              <option value="days">Days</option>
-              <option value="weeks">Weeks</option>
-              <option value="months">Months</option>
+              <option value="days">天</option>
+              <option value="weeks">周</option>
+              <option value="months">月</option>
             </select>
           </label>
         {/if}
 
         {#if recurrence === "weekly"}
           <fieldset class="weekday-picker span-2">
-            <legend class="field-label">Repeat on</legend>
+            <legend class="field-label">重复日期</legend>
             <div>
               {#each weekdayOptions as [code, label]}
                 <button
@@ -404,7 +404,7 @@
 
         <div class="subtasks span-2">
           <div class="subtask-heading">
-            <div><strong>Subtasks</strong><span>Break the task into small checkable steps.</span></div>
+            <div><strong>子任务</strong><span>把任务拆成可勾选的小步骤。</span></div>
             <button class="add-subtask" type="button" on:click={addSubtask}>
               <Icon name="plus" size={14} /> Add step
             </button>
@@ -433,8 +433,8 @@
           {#each subtaskDrafts as subtask (subtask.id)}
             <div class="subtask-row">
               <span class="step-dot"></span>
-              <input class="field-input" bind:value={subtask.title} maxlength="240" placeholder="Describe a step" />
-              <button type="button" aria-label="Remove subtask" on:click={() => removeSubtask(subtask.id)}>
+              <input class="field-input" bind:value={subtask.title} maxlength="240" placeholder="填写一个步骤" />
+              <button type="button" aria-label="删除子任务" on:click={() => removeSubtask(subtask.id)}>
                 <Icon name="x" size={14} />
               </button>
             </div>
@@ -448,7 +448,7 @@
       </div>
 
       <footer>
-        <button class="cancel" type="button" on:click={cancelClick}>Cancel</button>
+        <button class="cancel" type="button" on:click={cancelClick}>取消</button>
         <button class="save" type="submit" form="task-dialog-form" disabled={saving || !title.trim()}>
           {saving ? "Saving…" : task ? "Save changes" : "Create task"}
         </button>
