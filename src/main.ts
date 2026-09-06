@@ -1,6 +1,8 @@
 import { mount } from "svelte";
 import App from "./App.svelte";
 import { applyMotionPreference } from "./lib/motion";
+import { installChineseUi } from "./lib/i18n/zh";
+import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 // Self-hosted so the app keeps its typography offline. On macOS the stack
 // prefers the system SF Pro and never loads this file.
 import "@fontsource-variable/inter";
@@ -14,6 +16,17 @@ if (!target) {
 
 // Before the first paint, so a suppressed transition never gets to run once.
 applyMotionPreference();
+installChineseUi();
+
+async function ensureNotificationPermission(): Promise<void> {
+  try {
+    if (await isPermissionGranted()) return;
+    await requestPermission();
+  } catch {
+    // The persistent floating reminder UI remains available even if Windows rejects toast permission.
+  }
+}
+void ensureNotificationPermission();
 
 // The window is painted by the OS (Mica on Windows 11, vibrancy on macOS).
 // Only then do we let the shell go transparent so the backdrop shows through.
