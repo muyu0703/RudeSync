@@ -130,7 +130,7 @@
         return [] as Invoice[];
       });
       [clients, projects, workEntries, invoices] = await Promise.all([
-        service.list客户(),
+        service.listClients(),
         service.listProjects(),
         service.listWorkEntries(),
         invoicesPromise,
