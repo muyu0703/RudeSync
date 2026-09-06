@@ -291,13 +291,13 @@
       </select>
     </label>
     <label>
-      <span class="field-label">Status</span>
+      <span class="field-label">状态</span>
       <select class="field-input" bind:value={status}>
-        <option value="active">Active</option>
-        <option value="draft">Draft</option>
+        <option value="active">进行中</option>
+        <option value="draft">草稿</option>
         {#if project}
-          <option value="completed">Completed</option>
-          <option value="archived">Archived</option>
+          <option value="completed">已完成</option>
+          <option value="archived">已归档</option>
         {/if}
       </select>
     </label>
@@ -310,7 +310,7 @@
 
   <div class="field-grid value-row">
     <label>
-      <span class="field-label">Original quote</span>
+      <span class="field-label">原始报价</span>
       <div class="money-input">
         <i>{currency}</i>
         <input
@@ -330,11 +330,11 @@
       </small>
     </label>
     <label>
-      <span class="field-label">Start date</span>
+      <span class="field-label">开始日期</span>
       <input class="field-input" bind:value={startDate} type="date" />
     </label>
     <label>
-      <span class="field-label">Due date</span>
+      <span class="field-label">到期日期</span>
       <input
         class="field-input"
         bind:value={dueDate}
@@ -345,16 +345,16 @@
     </label>
   </div>
   {#if datesInvalid}
-    <p class="field-error" role="alert">The due date cannot be before the start date.</p>
+    <p class="field-error" role="alert">到期日期不能早于开始日期。</p>
   {/if}
 
   <label>
-    <span class="field-label">Notes / description</span>
+    <span class="field-label">备注 / 说明</span>
     <textarea class="field-textarea" bind:value={description} maxlength="2000" rows="3"></textarea>
   </label>
 
   <label>
-    <span class="field-label">Reference URLs</span>
+    <span class="field-label">参考链接</span>
     <textarea
       class="field-textarea"
       bind:value={urlsText}
@@ -364,35 +364,35 @@
       rows="2"
       placeholder={"https://project.example.com\nhttps://github.com/…"}
     ></textarea>
-    <small id="project-url-help" class="field-hint">Optional · one complete URL per line</small>
+    <small id="project-url-help" class="field-hint">可选 · 每行一个完整链接</small>
   </label>
   {#if urlsInvalid}
-    <p class="field-error" role="alert">Use a complete http:// or https:// URL, one per line.</p>
+    <p class="field-error" role="alert">请输入完整的 http:// 或 https:// 链接，每行一个。</p>
   {/if}
 
   <fieldset>
     <legend>
-      <span class="field-label">Milestones</span>
+      <span class="field-label">里程碑</span>
       <small>Plan total: {formatMoney(planTotal, currency)}</small>
     </legend>
 
     <div class="template-row">
       <label>
-        <span class="field-label">Template</span>
+        <span class="field-label">模板</span>
         <select class="field-input" bind:value={template} on:change={onTemplateOptionChange}>
-          <option value="custom">Custom / empty</option>
-          <option value="kickoff-completion">Kickoff + Completion</option>
-          <option value="even-weekly">Even weekly</option>
-          <option value="phases">Phase-by-phase</option>
+          <option value="custom">自定义 / 空白</option>
+          <option value="kickoff-completion">启动款 + 尾款</option>
+          <option value="even-weekly">按周平均</option>
+          <option value="phases">按阶段</option>
         </select>
       </label>
       {#if template === "even-weekly"}
         <label class="template-param">
-          <span class="field-label">Weeks</span>
+          <span class="field-label">周</span>
           <input class="field-input" bind:value={weeklyWeeks} type="number" min="1" step="1" />
         </label>
         <label class="template-param">
-          <span class="field-label">Amount / week</span>
+          <span class="field-label">每周金额</span>
           <div class="money-input">
             <i>{currency}</i>
             <input
@@ -431,18 +431,18 @@
       <div class="milestone">
         <span class="milestone-number">{String(index + 1).padStart(2, "0")}</span>
         <label>
-          <span class="field-label">Label</span>
+          <span class="field-label">名称</span>
           <input
             class="field-input"
             bind:value={milestone.label}
             maxlength="80"
-            placeholder="Milestone label"
+            placeholder="里程碑名称"
             aria-invalid={!milestone.label.trim()}
             required
           />
         </label>
         <label class="amount-field">
-          <span class="field-label">Amount</span>
+          <span class="field-label">金额</span>
           <div class="money-input">
             <i>{currency}</i>
             <input
@@ -460,7 +460,7 @@
           <button
             type="button"
             disabled={index === 0}
-            aria-label="Move milestone up"
+            aria-label="上移里程碑"
             on:click={() => moveMilestone(index, -1)}
           >
             ↑
@@ -468,7 +468,7 @@
           <button
             type="button"
             disabled={index === milestones.length - 1}
-            aria-label="Move milestone down"
+            aria-label="下移里程碑"
             on:click={() => moveMilestone(index, 1)}
           >
             ↓
@@ -476,7 +476,7 @@
           <button
             type="button"
             class="danger"
-            aria-label="Remove milestone"
+            aria-label="删除里程碑"
             disabled={isBilled(milestone)}
             title={isBilled(milestone)
               ? "Billed milestones can't be removed"
@@ -488,14 +488,14 @@
         </div>
       </div>
     {:else}
-      <p class="empty-hint">No milestones yet — pick a template or add one manually.</p>
+      <p class="empty-hint">暂无里程碑，请选择模板或手动添加。</p>
     {/each}
 
     <button class="secondary add-milestone" type="button" on:click={addMilestone}>
       + Add milestone
     </button>
     {#if milestoneLabelsInvalid}
-      <p class="field-error" role="alert">Give every milestone a label.</p>
+      <p class="field-error" role="alert">请为每个里程碑填写名称。</p>
     {/if}
   </fieldset>
 
@@ -503,7 +503,7 @@
 
 <svelte:fragment slot="footer">
   <footer>
-    <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
+    <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
     <button class="primary" type="submit" form="project-form" disabled={busy || formInvalid}>
       {busy ? "Saving…" : project ? "Save changes" : "Create project"}
     </button>
