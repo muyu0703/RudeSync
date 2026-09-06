@@ -17,6 +17,10 @@
     setMotionPreference,
     type MotionPreference,
   } from "../../motion";
+  import {
+    getWidgetIdleOpacity,
+    setWidgetIdleOpacity,
+  } from "../../widgetPreferences";
 
   const service = createSettingsService();
 
@@ -46,6 +50,7 @@
   let successMessage = "";
   let latestBackup: BackupResult | null = null;
   let motionPreference: MotionPreference = getMotionPreference();
+  let widgetIdleOpacity = getWidgetIdleOpacity();
 
   $: settingsDirty = JSON.stringify(settings) !== savedSettings;
   $: profileDirty = JSON.stringify(profile) !== savedProfile;
@@ -240,6 +245,10 @@
   function selectMotionPreference(value: MotionPreference): void {
     motionPreference = value;
     setMotionPreference(value);
+  }
+
+  function selectWidgetIdleOpacity(value: number): void {
+    widgetIdleOpacity = setWidgetIdleOpacity(value);
   }
 
   function errorText(error: unknown, fallback: string): string {
@@ -572,6 +581,33 @@
             </div>
             <small class="field-hint">设置会立即生效并仅保存在本机；“跟随系统”会使用 Windows 的动画设置。</small>
           </div>
+
+          <div class="field widget-opacity-field">
+            <div class="widget-opacity-head">
+              <span class="field-label">悬浮窗闲置透明度</span>
+              <strong>{widgetIdleOpacity}%</strong>
+            </div>
+            <input
+              class="opacity-slider"
+              type="range"
+              min="30"
+              max="90"
+              step="5"
+              value={widgetIdleOpacity}
+              aria-label="悬浮窗闲置透明度"
+              on:input={(event) =>
+                selectWidgetIdleOpacity(Number(event.currentTarget.value))}
+            />
+            <div class="opacity-scale" aria-hidden="true">
+              <span>30%</span>
+              <span>50%</span>
+              <span>70%</span>
+              <span>90%</span>
+            </div>
+            <small class="field-hint">
+              鼠标不在悬浮窗上时使用这里的透明度；鼠标移入悬浮窗后自动恢复为 100%。默认 50%。
+            </small>
+          </div>
         </Card>
       </div>
 
@@ -774,6 +810,31 @@
   select.field-input { color-scheme: dark; }
   .field-input[readonly] { color: var(--text-tertiary); cursor: default; }
   .short-input { text-transform: uppercase; }
+
+  .widget-opacity-field { margin-top: var(--space-4); }
+  .widget-opacity-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .widget-opacity-head strong {
+    color: var(--accent);
+    font-size: var(--text-13);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+  .opacity-slider {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .opacity-scale {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-quaternary);
+    font-size: var(--text-10);
+  }
 
   .path-control {
     display: grid;
