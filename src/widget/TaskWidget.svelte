@@ -6,6 +6,7 @@
   import { emitTasksChanged, onTasksChanged, emitOpenTask } from "../lib/services/taskSync";
   import { openTasks } from "./widgetTasks";
   import type { Task } from "../lib/types";
+  import { getWidgetIdleOpacity } from "../lib/widgetPreferences";
 
   const service = createTaskService();
   const appWindow = getCurrentWindow();
@@ -18,6 +19,8 @@
   let createMode: "alarm" | "timer" | "task" | null = null;
   let error = "";
   let now = Date.now();
+  let widgetHovered = false;
+  let widgetIdleOpacity = getWidgetIdleOpacity() / 100;
 
   let alarmTitle = "";
   let alarmAt = "";
@@ -194,18 +197,27 @@
       now = Date.now();
       void reminderCenter.list().then((items) => (reminders = items)).catch(() => {});
     }, 15_000);
+    const opacityWatcher = window.setInterval(() => {
+      widgetIdleOpacity = getWidgetIdleOpacity() / 100;
+    }, 750);
     let unsubscribe: (() => void) | null = null;
     void onTasksChanged(() => void loadAll()).then((off) => {
       unsubscribe = off;
     });
     return () => {
       window.clearInterval(clock);
+      window.clearInterval(opacityWatcher);
       unsubscribe?.();
     };
   });
 </script>
 
-<div class="widget">
+<div
+  class="widget"
+  style:opacity={widgetHovered ? 1 : widgetIdleOpacity}
+  on:mouseenter={() => (widgetHovered = true)}
+  on:mouseleave={() => (widgetHovered = false)}
+>
   <header data-tauri-drag-region>
     <div class="brand" data-tauri-drag-region>
       <span class="brand-dot"></span>
@@ -397,6 +409,8 @@
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 14px 38px rgba(76, 83, 95, 0.16);
+    transition: opacity 140ms ease;
+    will-change: opacity;
   }
   header {
     display: flex;
