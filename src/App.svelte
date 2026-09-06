@@ -819,17 +819,17 @@
             </Card>
 
             <Card padded={false}>
-              <SectionHeader slot="header" title="Payments" subtext="Coming up">
+              <SectionHeader slot="header" title="收款提醒" subtext="即将到期">
                 <svelte:fragment slot="actions">
-                  <span class="soft-badge">{actionableInvoiceDues.length + actionableLoanDues.length} actionable</span>
+                  <span class="soft-badge">{actionableInvoiceDues.length + actionableLoanDues.length} 项需处理</span>
                 </svelte:fragment>
               </SectionHeader>
               {#each actionableLoanDues.slice(0, 3) as item (item.installment.id)}
                 <div class:overdue={item.installment.dueDate < todayIso} class="attention-item">
                   <span class="attention-icon amber"><Icon name="loan" size={16} /></span>
                   <div>
-                    <strong>{item.loan.operator} · installment #{item.installment.installmentNumber}</strong>
-                    <span>{item.installment.dueDate < todayIso ? "Overdue" : "Due"} {displayDate(item.installment.dueDate)}</span>
+                    <strong>{item.loan.operator} · 第 {item.installment.installmentNumber}</strong>
+                    <span>{item.installment.dueDate < todayIso ? "已逾期" : "到期"} {displayDate(item.installment.dueDate)}</span>
                   </div>
                 </div>
               {/each}
@@ -838,7 +838,7 @@
                   <span class="attention-icon green"><Icon name="invoice" size={16} /></span>
                   <div>
                     <strong>{invoice.number} · {formatMoney(invoiceTotals(invoice).balanceDueMinor, invoice.currency)}</strong>
-                    <span>{invoice.clientName} · {invoice.dueDate < todayIso ? "Overdue" : "Due"} {displayDate(invoice.dueDate)}</span>
+                    <span>{invoice.clientName} · {invoice.dueDate < todayIso ? "已逾期" : "到期"} {displayDate(invoice.dueDate)}</span>
                   </div>
                 </div>
               {/each}
@@ -854,14 +854,14 @@
             <SectionHeader
               slot="header"
               title="Completed"
-              subtext="Tasks finished each day, last 14 days"
+              subtext="最近14天每日完成任务"
             />
             <BarChart
               points={completionTrend}
-              valueLabel="Completed"
+              valueLabel="已完成"
               labelEvery={2}
-              tableCaption="Tasks completed each day over the last 14 days"
-              emptyMessage="No tasks completed in the last 14 days yet."
+              tableCaption="最近14天每日完成任务数"
+              emptyMessage="最近14天还没有完成任务。"
               loading={loading}
             />
           </Card>
@@ -869,9 +869,9 @@
 
         <div class="upcoming-panel">
           <Card padded={false}>
-            <SectionHeader slot="header" title="Upcoming" subtext="Next seven days">
+            <SectionHeader slot="header" title="即将到来" subtext="未来7天">
               <svelte:fragment slot="actions">
-                <span class="count-label">{nextSevenTasks.length} scheduled</span>
+                <span class="count-label">{nextSevenTasks.length} 项已安排</span>
               </svelte:fragment>
             </SectionHeader>
             {#if nextSevenTasks.length}
@@ -882,7 +882,7 @@
                     animate:flip={{ duration: motionDuration(180) }}
                   >
                     <span class="upcoming-date">{displayDate(task.plannedDate ?? task.dueDate ?? "")}</span>
-                    <strong>{task.title}</strong><span>{task.category ?? "Uncategorized"}</span>
+                    <strong>{task.title}</strong><span>{task.category ?? "未分类"}</span>
                   </article>
                 {/each}
               </div>
@@ -981,13 +981,13 @@
 
         <div class="review-grid">
           <Card>
-            <SectionHeader slot="header" title="This week" subtext="Task completion" />
+            <SectionHeader slot="header" title="本周" subtext="任务完成情况" />
             <MeterBar
-              label="Weekly progress"
+              label="本周进度"
               value={completedThisWeek.length}
               max={weeklyProgressTotal}
-              detail={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
-              valueText={`${completedThisWeek.length} of ${weeklyProgressTotal} done`}
+              detail={`${completedThisWeek.length} / ${weeklyProgressTotal} 已完成`}
+              valueText={`${completedThisWeek.length} / ${weeklyProgressTotal} 已完成`}
               tone="positive"
             />
           </Card>
@@ -996,13 +996,13 @@
             <SectionHeader
               slot="header"
               title="每日节奏"
-              subtext="Tasks finished each day this week"
+              subtext="本周每日完成任务"
             />
             <BarChart
               points={reviewTrend}
-              valueLabel="Completed"
-              tableCaption="Tasks completed each day this week"
-              emptyMessage="Nothing completed this week yet."
+              valueLabel="已完成"
+              tableCaption="本周每日完成任务数"
+              emptyMessage="本周还没有完成任务。"
               loading={loading}
             />
           </Card>
