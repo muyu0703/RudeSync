@@ -125,7 +125,7 @@
       const invoicesPromise = moneyService.listInvoices().catch((error) => {
         invoiceLoadError = errorText(
           error,
-          "Project billing could not be loaded.",
+          "无法加载项目开票数据。",
         );
         return [] as Invoice[];
       });
@@ -139,7 +139,7 @@
     } catch (error) {
       errorMessage = errorText(
         error,
-        "Your work workspace could not be loaded.",
+        "无法加载工作区数据。",
       );
     } finally {
       loading = false;
@@ -164,7 +164,7 @@
       dialog = null;
       editingClient = null;
     } catch (error) {
-      errorMessage = errorText(error, "The client could not be saved.");
+      errorMessage = errorText(error, "无法保存客户。");
     } finally {
       saving = false;
     }
@@ -187,7 +187,7 @@
       dialog = null;
       editingProject = null;
     } catch (error) {
-      errorMessage = errorText(error, "The project could not be saved.");
+      errorMessage = errorText(error, "无法保存项目。");
     } finally {
       saving = false;
     }
@@ -213,7 +213,7 @@
     } catch (error) {
       errorMessage = errorText(
         error,
-        "The completed-work record could not be saved.",
+        "无法保存已完成工作记录。",
       );
     } finally {
       saving = false;
@@ -236,7 +236,7 @@
       clients = clients.filter((item) => item.id !== client.id);
       if (selectedClientId === client.id) selectedClientId = "all";
     } catch (error) {
-      errorMessage = errorText(error, "The client could not be deleted.");
+      errorMessage = errorText(error, "无法删除客户。");
     } finally {
       saving = false;
     }
@@ -257,7 +257,7 @@
       await service.deleteProject(project.id);
       projects = projects.filter((item) => item.id !== project.id);
     } catch (error) {
-      errorMessage = errorText(error, "The project could not be deleted.");
+      errorMessage = errorText(error, "无法删除项目。");
     } finally {
       saving = false;
     }
@@ -284,7 +284,7 @@
     } catch (error) {
       errorMessage = errorText(
         error,
-        "The completed-work record could not be deleted.",
+        "无法删除已完成工作记录。",
       );
     } finally {
       saving = false;
@@ -394,7 +394,7 @@
   function milestoneStatusLabel(status: MilestoneStatus): string {
     if (status === "paid") return "Paid";
     if (status === "invoiced") return "Invoiced";
-    return "Not invoiced";
+    return "未开票";
   }
 
   function remainingToInvoiceMinor(project: Project): number {
@@ -479,7 +479,7 @@
       icon="money"
       label="预计项目金额"
       value={expectedTotals.length ? formatMoney(expectedTotals[0].totalMinor, expectedTotals[0].currency) : "None"}
-      detail={expectedTotals.length > 1 ? extraCurrencies(expectedTotals) : "Sum of milestone plans"}
+      detail={expectedTotals.length > 1 ? extraCurrencies(expectedTotals) : "里程碑计划合计"}
       tone={expectedTotals.length ? "positive" : "neutral"}
     />
     <StatCard
@@ -488,7 +488,7 @@
       value={remainingTotals.length ? formatMoney(remainingTotals[0].totalMinor, remainingTotals[0].currency) : "None"}
       detail={remainingTotals.length > 1
         ? extraCurrencies(remainingTotals)
-        : "Across active projects"}
+        : "进行中项目汇总"}
       tone={remainingTotals.length ? "warning" : "neutral"}
     />
   </StatRow>
@@ -510,7 +510,7 @@
       class="primary-button"
       type="button"
       disabled={!clients.length}
-      title={!clients.length ? "Create a client first" : "Create a fixed-price project"}
+      title={!clients.length ? "请先创建客户" : "创建固定报价项目"}
       on:click={() => openProjectDialog()}
     >
       <Icon name="briefcase" size={15} /> Project
@@ -570,7 +570,7 @@
             {@const projectWork = workForProject(project.id)}
             {@const projectInvoices = invoicesForProject(project.id)}
             <Card>
-              <SectionHeader slot="header" title={project.name} subtext={client?.name ?? "Unassigned client"}>
+              <SectionHeader slot="header" title={project.name} subtext={client?.name ?? "未分配客户"}>
                 <svelte:fragment slot="actions">
                   <span class="soft-badge">{project.status}</span>
                 </svelte:fragment>
@@ -641,7 +641,7 @@
                         <div class="invoice-main">
                           <span class="invoice-icon"><Icon name="invoice" size={14} /></span>
                           <div class="invoice-copy">
-                            <strong>{invoice.milestoneLabel ?? "Project invoice"}</strong>
+                            <strong>{invoice.milestoneLabel ?? "项目发票"}</strong>
                             <span>
                               {invoice.number}
                               <i aria-hidden="true">·</i>
@@ -896,10 +896,10 @@
 
 {#if dialog === "client"}
   <ClientForm
-    dialogTitle={editingClient ? "编辑 client" : "New client"}
+    dialogTitle={editingClient ? "编辑客户" : "新建客户"}
     dialogDescription={editingClient
-      ? "Correct contact, billing, currency, or private notes. Issued invoices keep their original snapshot."
-      : "Create the relationship once, then keep every project and invoice organized beneath it."}
+      ? "可修改联系方式、账单信息、币种或内部备注；已开出的发票保留原始快照。"
+      : "先建立一次客户关系，之后所有项目和发票都归入其下管理。"}
     {defaultCurrency}
     client={editingClient}
     busy={saving}
@@ -908,10 +908,10 @@
   />
 {:else if dialog === "project"}
   <ProjectForm
-    dialogTitle={editingProject ? "编辑 fixed-price project" : "New fixed-price project"}
+    dialogTitle={editingProject ? "编辑固定报价项目" : "新建固定报价项目"}
     dialogDescription={editingProject
-      ? "Correct value, status, dates, notes, links, or milestone split. Existing invoices remain unchanged."
-      : "The project is the container for milestones, completed work, invoices, and payments."}
+      ? "可修改金额、状态、日期、备注、链接或里程碑拆分；现有发票不会改变。"
+      : "项目用于统一管理里程碑、已完成工作、发票和收款。"}
     {clients}
     initialClientId={selectedClientId === "all" ? null : selectedClientId}
     project={editingProject}
@@ -921,10 +921,10 @@
   />
 {:else if dialog === "work"}
   <WorkEntryForm
-    dialogTitle={editingWorkEntry ? "编辑 completed work" : "记录已完成工作"}
+    dialogTitle={editingWorkEntry ? "编辑已完成工作" : "记录已完成工作"}
     dialogDescription={editingWorkEntry
-      ? "Correct the project, date, result, details, or reference URLs."
-      : "Capture the result, not the hours. URLs stay as lightweight references."}
+      ? "可修改项目、日期、结果、详情或参考链接。"
+      : "记录完成结果，而不是耗时；链接仅作为轻量参考。"}
     {projects}
     entry={editingWorkEntry}
     initialProjectId={workEntryProjectId}
