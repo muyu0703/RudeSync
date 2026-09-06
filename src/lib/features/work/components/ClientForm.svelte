@@ -53,18 +53,18 @@
         <input class="field-input" bind:value={name} maxlength="120" autocomplete="name" data-work-autofocus required />
       </label>
       <label>
-        <span class="field-label">Company</span>
+        <span class="field-label">公司</span>
         <input class="field-input" bind:value={companyName} maxlength="160" autocomplete="organization" />
       </label>
     </div>
 
     <div class="field-grid currency-row">
       <label>
-        <span class="field-label">Email</span>
+        <span class="field-label">邮箱</span>
         <input class="field-input" bind:value={email} maxlength="254" type="email" autocomplete="email" />
       </label>
       <label>
-        <span class="field-label">Currency</span>
+        <span class="field-label">币种</span>
         <input
           class="field-input"
           value={currency}
@@ -76,24 +76,24 @@
           aria-describedby="currency-help"
           required
         />
-        <small id="currency-help" class="field-hint">Three-letter code</small>
+        <small id="currency-help" class="field-hint">三位字母代码</small>
       </label>
     </div>
 
     <label>
-      <span class="field-label">Billing address</span>
+      <span class="field-label">账单地址</span>
       <textarea class="field-textarea" bind:value={billingAddress} maxlength="600" rows="2"></textarea>
     </label>
 
     <label>
-      <span class="field-label">Private notes</span>
+      <span class="field-label">内部备注</span>
       <textarea class="field-textarea" bind:value={notes} maxlength="1200" rows="3"></textarea>
     </label>
   </form>
 
   <svelte:fragment slot="footer">
     <footer>
-      <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
+      <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
       <button class="primary" type="submit" form="client-form" disabled={busy || !name.trim() || currency.length !== 3}>
         {busy ? "Saving…" : client ? "Save changes" : "Create client"}
       </button>
