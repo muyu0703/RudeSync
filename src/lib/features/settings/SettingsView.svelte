@@ -642,7 +642,7 @@
             </label>
 
             <div class="last-backup">
-              <span>{latestBackup ? "Latest manual backup" : "最近一次自动备份"}</span>
+              <span>{latestBackup ? "最近一次手动备份" : "最近一次自动备份"}</span>
               <strong>{formatTimestamp(latestBackup?.completedAt ?? settings.lastBackupAt)}</strong>
               {#if latestBackup?.sizeBytes != null}
                 <small>{latestBackup.destinationPath} · {formatBytes(latestBackup.sizeBytes)}</small>
