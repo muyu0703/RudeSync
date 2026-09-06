@@ -159,10 +159,10 @@
     ? billingByMonth(invoices, chartCurrency, today, 6)
     : [];
   $: earningsSubtext = earningGroups.length
-    ? `All-time collected · ${earningGroups
+    ? `累计已收款 · ${earningGroups
         .map((group) => formatMoney(group.total, group.currency))
         .join(" · ")}`
-    : "All-time collected";
+    : "累计已收款";
   // Invoice/loan actions can be triggered from far down a long list, while the
   // notice banner renders once, near the top. Bring it into view whenever its
   // content changes so feedback is never off-screen from the action.
@@ -625,7 +625,7 @@
   }
 
   // Enter must never irreversibly issue an invoice: the composer's <form>
-  // submit action is "Save draft" (reversible), so "Create & issue" is a
+  // submit action is "保存草稿" (reversible), so "创建并开出" is a
   // type="button" that reaches saveInvoice("issued") only through this same
   // confirmation the invoice list already uses before locking the number and
   // issue date.
@@ -1108,21 +1108,21 @@
       icon="invoice"
       label="Outstanding"
       value={moneyOutstanding.length ? formatMoney(moneyOutstanding[0].amountMinor, moneyOutstanding[0].currency) : "None"}
-      detail={moneyOutstanding.length > 1 ? extraCurrencies(moneyOutstanding) : "Invoiced, not yet paid"}
+      detail={moneyOutstanding.length > 1 ? extraCurrencies(moneyOutstanding) : "已开票，尚未收款"}
       tone={moneyOutstanding.length ? "warning" : "neutral"}
     />
     <StatCard
       icon="arrow-up-right"
       label="Received"
       value={moneyReceived.length ? formatMoney(moneyReceived[0].amountMinor, moneyReceived[0].currency) : "None"}
-      detail={moneyReceived.length > 1 ? extraCurrencies(moneyReceived) : "This month"}
+      detail={moneyReceived.length > 1 ? extraCurrencies(moneyReceived) : "本月"}
       tone={moneyReceived.length ? "positive" : "neutral"}
     />
     <StatCard
       icon="clock"
       label="Overdue invoices"
       value={String(overdueInvoices)}
-      detail={overdueInvoices === 0 ? "All current" : "Past due date"}
+      detail={overdueInvoices === 0 ? "全部当前项目" : "已过到期日"}
       tone={overdueInvoices > 0 ? "danger" : "neutral"}
     />
   </StatRow>
@@ -1131,18 +1131,18 @@
     {#if errorMessage}
       <div class="notice error" role="alert">
         <span>{errorMessage}</span>
-        <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>×</button>
+        <button type="button" aria-label="关闭错误提示" on:click={() => (errorMessage = "")}>×</button>
       </div>
     {/if}
     {#if successMessage}
       <div class="notice success" role="status">
         <span>{successMessage}</span>
-        <button type="button" aria-label="Dismiss message" on:click={() => (successMessage = "")}>×</button>
+        <button type="button" aria-label="关闭提示" on:click={() => (successMessage = "")}>×</button>
       </div>
     {/if}
   </div>
 
-  <div class="segmented" role="tablist" aria-label="Money sections">
+  <div class="segmented" role="tablist" aria-label="财务模块">
     <button
       id="money-tab-invoices"
       role="tab"
@@ -1179,13 +1179,13 @@
       aria-labelledby="money-tab-invoices"
       class="tab-panel"
     >
-      <p class="tab-intro">Client earnings and personal loans stay deliberately separate.</p>
+      <p class="tab-intro">客户收入与个人借款独立管理。</p>
       <div class="page-actions">
         <button
           class="primary-button"
           type="button"
           disabled={!projects.length}
-          title={projects.length ? "" : "Create a project in Work first"}
+          title={projects.length ? "" : "请先在“工作”中创建项目"}
           on:click={openInvoiceComposer}
         >
           <Icon name="invoice" size={15} /> New invoice
@@ -1201,14 +1201,14 @@
         >
           <div class="composer-head">
             <div>
-              <span class="eyebrow">Milestone billing</span>
+              <span class="eyebrow">里程碑开票</span>
               <h3>{editingInvoiceId ? "Edit draft invoice" : "Create invoice"}</h3>
             </div>
             <span class="number-chip">{invoiceNumberPreview}</span>
           </div>
           <div class="form-grid">
             <label class="span-2">
-              <span class="field-label">Project</span>
+              <span class="field-label">项目</span>
               <select
                 class="field-input"
                 bind:value={invoiceProjectId}
@@ -1216,16 +1216,16 @@
                 required
                 on:change={applyProjectDefaults}
               >
-                <option value="" disabled>Select project</option>
+                <option value="" disabled>选择项目</option>
                 {#each projects as project}
                   <option value={project.id}>{project.clientName} · {project.name}</option>
                 {/each}
               </select>
             </label>
             <label>
-              <span class="field-label">Milestone</span>
+              <span class="field-label">里程碑</span>
               <select class="field-input" bind:value={invoiceMilestoneId} on:change={applyMilestoneDefaults}>
-                <option value="">Custom invoice</option>
+                <option value="">自定义发票</option>
                 {#if selectedProject?.milestones.length}
                   {#each selectedProject.milestones as milestone}
                     <option
@@ -1240,67 +1240,67 @@
               </select>
             </label>
             <label>
-              <span class="field-label">Issue date</span>
+              <span class="field-label">开票日期</span>
               <input class="field-input" type="date" bind:value={invoiceIssueDate} required />
             </label>
             <label>
-              <span class="field-label">Payment term</span>
+              <span class="field-label">付款期限</span>
               <select class="field-input" bind:value={invoiceTerm}>
-                <option value="immediate">Due immediately</option>
-                <option value="7-days">7 days</option>
-                <option value="14-days">14 days</option>
-                <option value="30-days">30 days</option>
-                <option value="custom">Custom date</option>
+                <option value="immediate">立即到期</option>
+                <option value="7-days">7天</option>
+                <option value="14-days">14天</option>
+                <option value="30-days">30天</option>
+                <option value="custom">自定义日期</option>
               </select>
             </label>
             {#if invoiceTerm === "custom"}
               <label>
-                <span class="field-label">Custom due date</span>
+                <span class="field-label">自定义到期日期</span>
                 <input class="field-input" type="date" min={invoiceIssueDate} bind:value={invoiceCustomDueDate} required />
               </label>
             {:else}
-              <div class="read-field"><span class="field-label">Due date</span><strong class="field-input">{formatDate(invoiceDueDate)}</strong></div>
+              <div class="read-field"><span class="field-label">到期日期</span><strong class="field-input">{formatDate(invoiceDueDate)}</strong></div>
             {/if}
           </div>
 
           <fieldset class="line-items">
-            <legend class="field-label">Line items</legend>
+            <legend class="field-label">明细项目</legend>
             <div class="line-labels" aria-hidden="true">
-              <span>Description</span><span>Qty</span><span>Unit price</span><span></span>
+              <span>说明</span><span>数量</span><span>单价</span><span></span>
             </div>
             {#each invoiceLines as line (line.id)}
               <div class="line-row">
                 <label>
-                  <span class="sr-only">Description</span>
-                  <input class="field-input" bind:value={line.description} maxlength="180" placeholder="Milestone or deliverable" required />
+                  <span class="sr-only">说明</span>
+                  <input class="field-input" bind:value={line.description} maxlength="180" placeholder="里程碑或交付项" required />
                 </label>
                 <label>
-                  <span class="sr-only">Quantity</span>
+                  <span class="sr-only">数量</span>
                   <input class="field-input" bind:value={line.quantity} inputmode="decimal" aria-label="Quantity" required />
                 </label>
                 <label>
-                  <span class="sr-only">Unit price</span>
+                  <span class="sr-only">单价</span>
                   <span class="money-input"><i>{selectedProject?.currency ?? "USD"}</i><input class="field-input" bind:value={line.unitPrice} inputmode="decimal" aria-label="Unit price" required /></span>
                 </label>
                 <button
                   class="icon-button"
                   type="button"
                   disabled={invoiceLines.length === 1}
-                  aria-label="Remove line item"
+                  aria-label="删除明细"
                   on:click={() => removeInvoiceLine(line.id)}
                 >×</button>
               </div>
             {/each}
-            <button class="text-button" type="button" on:click={addInvoiceLine}>+ Add line item</button>
+            <button class="text-button" type="button" on:click={addInvoiceLine}>+ 添加明细</button>
           </fieldset>
 
           <div class="adjustments">
             <label>
-              <span class="field-label">Discount</span>
+              <span class="field-label">折扣</span>
               <select class="field-input" bind:value={invoiceDiscountKind}>
-                <option value="none">None</option>
-                <option value="fixed">Fixed amount</option>
-                <option value="percentage">Percentage</option>
+                <option value="none">无</option>
+                <option value="fixed">固定金额</option>
+                <option value="percentage">百分比</option>
               </select>
             </label>
             {#if invoiceDiscountKind !== "none"}
@@ -1310,14 +1310,14 @@
               </label>
             {/if}
             <label>
-              <span class="field-label">Tax %</span>
+              <span class="field-label">税率 %</span>
               <input class="field-input" bind:value={invoiceTax} inputmode="decimal" placeholder="Optional" />
             </label>
           </div>
 
           <div class="form-grid notes-grid">
-            <label><span class="field-label">Notes</span><textarea class="field-textarea" bind:value={invoiceNotes} rows="2" placeholder="Optional invoice note"></textarea></label>
-            <label><span class="field-label">Payment instructions</span><textarea class="field-textarea" bind:value={invoiceInstructions} rows="2" placeholder="Bank, PayPal, or other instructions"></textarea></label>
+            <label><span class="field-label">备注</span><textarea class="field-textarea" bind:value={invoiceNotes} rows="2" placeholder="发票备注（可选）"></textarea></label>
+            <label><span class="field-label">付款说明</span><textarea class="field-textarea" bind:value={invoiceInstructions} rows="2" placeholder="银行、PayPal 或其他付款说明"></textarea></label>
           </div>
           <div class="totals" aria-live="polite">
             <span>Subtotal <b>{draftTotals ? formatMoney(draftTotals.subtotalMinor, selectedProject?.currency) : "—"}</b></span>
@@ -1330,36 +1330,36 @@
               class="secondary-button"
               type="button"
               on:click={cancelInvoiceComposer}
-            >Cancel</button>
+            >取消</button>
             <button
               class="secondary-button"
               type="submit"
               disabled={saving || !selectedProject || !draftTotals}
-            >{saving ? "Saving…" : "Save draft"}</button>
+            >{saving ? "Saving…" : "保存草稿"}</button>
             <button
               class="primary-button"
               type="button"
               disabled={saving || !selectedProject || !draftTotals}
               on:click={confirmIssueFromComposer}
             >
-              {saving ? "Saving…" : editingInvoiceId ? "Save & issue" : "Create & issue"}
+              {saving ? "Saving…" : editingInvoiceId ? "保存并开出" : "创建并开出"}
             </button>
           </div>
         </form>
       {/if}
 
       {#if loading}
-        <div class="loading-state" aria-live="polite">Loading invoices…</div>
+        <div class="loading-state" aria-live="polite">正在加载发票…</div>
       {:else if !projects.length && !invoices.length}
         <div class="empty-state">
-          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>Create a project first</h3>
-          <p>Invoices live inside project containers. Add a client and project in Work, then return here.</p>
+          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>请先创建项目</h3>
+          <p>发票依附于项目。请先在“工作”中添加客户和项目，然后回到这里。</p>
         </div>
       {:else if !invoices.length}
         <div class="empty-state">
-          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>No invoices yet</h3>
-          <p>Create a kickoff or completion invoice from one of your projects.</p>
-          <button class="primary-button" type="button" on:click={openInvoiceComposer}>Create first invoice</button>
+          <span class="empty-icon"><Icon name="invoice" size={21} /></span><h3>暂无发票</h3>
+          <p>可以从项目中创建启动款或尾款发票。</p>
+          <button class="primary-button" type="button" on:click={openInvoiceComposer}>创建第一张发票</button>
         </div>
       {:else}
         <Card>
@@ -1398,11 +1398,11 @@
                   on:submit|preventDefault={savePayment}
                   transition:slide={{ duration: motionDuration(180) }}
                 >
-                  <label><span class="field-label">Payment amount</span><input class="field-input" bind:value={paymentAmount} inputmode="decimal" required /></label>
-                  <label><span class="field-label">Received date</span><input class="field-input" type="date" bind:value={paymentDate} required /></label>
-                  <label class="grow"><span class="field-label">Note / reference</span><input class="field-input" bind:value={paymentNote} placeholder="Optional" /></label>
+                  <label><span class="field-label">收款金额</span><input class="field-input" bind:value={paymentAmount} inputmode="decimal" required /></label>
+                  <label><span class="field-label">收款日期</span><input class="field-input" type="date" bind:value={paymentDate} required /></label>
+                  <label class="grow"><span class="field-label">备注 / 参考</span><input class="field-input" bind:value={paymentNote} placeholder="Optional" /></label>
                   <button class="primary-button small" type="submit" disabled={saving}>{saving ? "Saving…" : "Record"}</button>
-                  <button class="secondary-button small" type="button" on:click={() => (paymentInvoiceId = null)}>Cancel</button>
+                  <button class="secondary-button small" type="button" on:click={() => (paymentInvoiceId = null)}>取消</button>
                 </form>
               {/if}
 
@@ -1413,18 +1413,18 @@
                 </span>
                 <div>
                   {#if status === "draft"}
-                    <button class="text-button" type="button" on:click={() => editDraftInvoice(invoice)}>Edit draft</button>
-                    <button class="text-button" type="button" disabled={saving} on:click={() => issueDraft(invoice)}>Issue</button>
-                    <button class="text-button danger" type="button" disabled={saving} on:click={() => discardDraft(invoice)}>Discard draft</button>
+                    <button class="text-button" type="button" on:click={() => editDraftInvoice(invoice)}>编辑草稿</button>
+                    <button class="text-button" type="button" disabled={saving} on:click={() => issueDraft(invoice)}>开出</button>
+                    <button class="text-button danger" type="button" disabled={saving} on:click={() => discardDraft(invoice)}>删除草稿</button>
                   {/if}
                   {#if !["draft", "void", "paid"].includes(status)}
-                    <button class="text-button" type="button" on:click={() => startPayment(invoice)}>Record payment</button>
+                    <button class="text-button" type="button" on:click={() => startPayment(invoice)}>记录收款</button>
                   {/if}
                   {#if ["issued", "partially-paid", "overdue"].includes(status)}
-                    <button class="text-button danger" type="button" disabled={saving} on:click={() => voidInvoice(invoice)}>Void</button>
+                    <button class="text-button danger" type="button" disabled={saving} on:click={() => voidInvoice(invoice)}>作废</button>
                   {/if}
-                  <button class="text-button" type="button" on:click={() => exportInvoice(invoice, "print")}>Print</button>
-                  <button class="secondary-button small" type="button" on:click={() => exportInvoice(invoice, "pdf")}>Export PDF</button>
+                  <button class="text-button" type="button" on:click={() => exportInvoice(invoice, "print")}>打印</button>
+                  <button class="secondary-button small" type="button" on:click={() => exportInvoice(invoice, "pdf")}>导出 PDF</button>
                 </div>
               </footer>
             </article>
@@ -1443,10 +1443,10 @@
       <Card>
         <SectionHeader
           slot="header"
-          title="Billed vs collected"
+          title="开票与已收款"
           subtext={chartCurrency
-            ? `By invoice month · last 6 months · ${chartCurrency}`
-            : "By invoice month · last 6 months"}
+            ? `按开票月份 · 最近6个月 · ${chartCurrency}`
+            : "按开票月份 · 最近6个月"}
         >
           <svelte:fragment slot="actions">
             {#if chartCurrencies.length > 1}
@@ -1473,7 +1473,7 @@
           formatValue={(value) => formatMoney(value, chartCurrency)}
           formatAxis={(value) => formatMoneyCompact(value, chartCurrency)}
           tableCaption={`Billed and collected per invoice month in ${chartCurrency}`}
-          emptyMessage="No issued invoices in the last six months."
+          emptyMessage="最近6个月没有已开出的发票。"
           loading={loading}
         />
       </Card>
@@ -1492,12 +1492,12 @@
                 <div><strong>{row.invoice.clientName}</strong><small>{row.invoice.projectName} · {row.invoice.number}</small></div>
                 <time datetime={row.payment.receivedDate}>{formatDate(row.payment.receivedDate)}</time>
                 <b>{formatMoney(row.payment.amountMinor, row.invoice.currency)}</b>
-                <small>{row.payment.note ?? "Payment received"}</small>
+                <small>{row.payment.note ?? "已收款"}</small>
               </article>
             {/each}
           </div>
         {:else}
-          <div class="empty-state nested"><span class="empty-icon"><Icon name="money" size={19} /></span><h3>No earnings recorded</h3><p>Payments recorded against invoices will appear here.</p></div>
+          <div class="empty-state nested"><span class="empty-icon"><Icon name="money" size={19} /></span><h3>暂无收入记录</h3><p>发票收款记录会显示在这里。</p></div>
         {/if}
       </Card>
     </div>
@@ -1521,51 +1521,51 @@
       {#if showLoanForm}
         <form class="composer" on:submit|preventDefault={saveLoan} transition:slide={{ duration: motionDuration(180) }}>
           <div class="composer-head">
-            <div><span class="eyebrow">Personal obligation</span><h3>Create loan schedule</h3></div>
-            <span class="separation-chip">Never linked to clients</span>
+            <div><span class="eyebrow">个人负债</span><h3>创建借款计划</h3></div>
+            <span class="separation-chip">不会关联客户</span>
           </div>
           <div class="form-grid">
-            <label class="span-2"><span class="field-label">Lender / operator</span><input class="field-input" bind:value={loanOperator} maxlength="120" placeholder="Operator name" required /></label>
-            <label><span class="field-label">Loan date</span><input class="field-input" type="date" bind:value={loanDate} required /></label>
-            <label><span class="field-label">Explicit first payment</span><input class="field-input" type="date" min={loanDate} bind:value={loanFirstPayment} on:change={changeFirstPayment} required /></label>
+            <label class="span-2"><span class="field-label">出借方 / 平台</span><input class="field-input" bind:value={loanOperator} maxlength="120" placeholder="平台名称" required /></label>
+            <label><span class="field-label">借款日期</span><input class="field-input" type="date" bind:value={loanDate} required /></label>
+            <label><span class="field-label">指定首期还款日</span><input class="field-input" type="date" min={loanDate} bind:value={loanFirstPayment} on:change={changeFirstPayment} required /></label>
             <label>
-              <span class="field-label">Frequency</span>
+              <span class="field-label">频率</span>
               <select class="field-input" bind:value={loanFrequency} on:change={changeLoanFrequency}>
-                <option value="monthly">Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="every-two-weeks">Every two weeks</option>
-                <option value="twice-monthly">Twice monthly</option>
-                <option value="custom">Custom dates</option>
+                <option value="monthly">每月</option>
+                <option value="weekly">每周</option>
+                <option value="every-two-weeks">每两周</option>
+                <option value="twice-monthly">每月两次</option>
+                <option value="custom">自定义日期</option>
               </select>
             </label>
             {#if loanFrequency !== "custom"}
-              <label><span class="field-label">Number of installments</span><input class="field-input" type="number" min="1" max="240" bind:value={loanCount} required /></label>
+              <label><span class="field-label">期数</span><input class="field-input" type="number" min="1" max="240" bind:value={loanCount} required /></label>
             {/if}
             {#if loanFrequency === "twice-monthly"}
-              <label><span class="field-label">First day of month</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayOne} required /></label>
-              <label><span class="field-label">Second day of month</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayTwo} required /></label>
+              <label><span class="field-label">每月第一个日期</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayOne} required /></label>
+              <label><span class="field-label">每月第二个日期</span><input class="field-input" type="number" min="1" max="31" bind:value={loanDayTwo} required /></label>
             {/if}
-            <label class="span-2"><span class="field-label">Description</span><textarea class="field-textarea" bind:value={loanDescription} rows="2" placeholder="Optional note about this loan"></textarea></label>
+            <label class="span-2"><span class="field-label">说明</span><textarea class="field-textarea" bind:value={loanDescription} rows="2" placeholder="借款备注（可选）"></textarea></label>
           </div>
 
           {#if loanFrequency === "custom"}
             <fieldset class="custom-dates" transition:slide={{ duration: motionDuration(180) }}>
-              <legend class="field-label">Custom due dates</legend>
+              <legend class="field-label">自定义还款日期</legend>
               {#each loanScheduleDates as date, index}
                 <div>
                   <label><span class="field-label">Installment {index + 1}</span><input class="field-input" type="date" bind:value={loanScheduleDates[index]} required /></label>
                   <button class="icon-button" type="button" disabled={index === 0} aria-label={`Remove installment ${index + 1}`} on:click={() => removeCustomDate(index)}>×</button>
                 </div>
               {/each}
-              <button class="text-button" type="button" on:click={addCustomDate}>+ Add due date</button>
+              <button class="text-button" type="button" on:click={addCustomDate}>+ 添加日期</button>
             </fieldset>
           {/if}
 
           <div class="preview-toolbar">
             <button class="secondary-button" type="button" on:click={generateLoanPreview}>
-              {loanScheduleDates.length ? "Refresh schedule preview" : "Generate schedule preview"}
+              {loanScheduleDates.length ? "刷新还款计划预览" : "生成还款计划预览"}
             </button>
-            {#if scheduleIsStale}<span role="status">Inputs changed · refresh before saving</span>{/if}
+            {#if scheduleIsStale}<span role="status">输入已变更 · 保存前请刷新</span>{/if}
           </div>
 
           {#if loanScheduleDates.length && !scheduleIsStale}
@@ -1579,21 +1579,21 @@
             </div>
           {/if}
           <div class="form-actions">
-            <button class="secondary-button" type="button" on:click={cancelLoanComposer}>Cancel</button>
+            <button class="secondary-button" type="button" on:click={cancelLoanComposer}>取消</button>
             <button class="primary-button" type="submit" disabled={saving || !loanScheduleDates.length || scheduleIsStale}>
-              {saving ? "Saving…" : "Save personal loan"}
+              {saving ? "Saving…" : "保存个人借款"}
             </button>
           </div>
         </form>
       {/if}
 
       {#if loading}
-        <div class="loading-state">Loading personal loans…</div>
+        <div class="loading-state">正在加载个人借款…</div>
       {:else if !loans.length}
         <div class="empty-state">
-          <span class="empty-icon"><Icon name="loan" size={21} /></span><h3>No personal loans</h3>
-          <p>Track due dates and paid status without mixing personal debt into client earnings.</p>
-          <button class="primary-button" type="button" on:click={openLoanComposer}>Add personal loan</button>
+          <span class="empty-icon"><Icon name="loan" size={21} /></span><h3>暂无个人借款</h3>
+          <p>单独跟踪还款日期和还款状态，不与客户收入混在一起。</p>
+          <button class="primary-button" type="button" on:click={openLoanComposer}>添加个人借款</button>
         </div>
       {:else}
         <div class="loan-list">
@@ -1603,7 +1603,7 @@
               <summary>
                 <span class="loan-icon">L</span>
                 <div><strong>{loan.operator}</strong><small>{loan.description ?? `${loan.installmentCount} installment schedule`}</small></div>
-                <div class="loan-next"><span>{unpaid.length ? "Next due" : "Complete"}</span><strong>{unpaid.length ? formatDate(unpaid[0].dueDate) : "All paid"}</strong></div>
+                <div class="loan-next"><span>{unpaid.length ? "下一笔到期" : "Complete"}</span><strong>{unpaid.length ? formatDate(unpaid[0].dueDate) : "全部已支付"}</strong></div>
                 <b>{loan.installments.length - unpaid.length}/{loan.installments.length}</b>
               </summary>
               <div class="loan-meta">
@@ -1632,7 +1632,7 @@
                     >{installment.paid ? "✓" : ""}</button>
                     <span>Installment {installment.installmentNumber}</span>
                     <label class="inline-date">
-                      <span class="sr-only">Due date</span>
+                      <span class="sr-only">到期日期</span>
                       <input
                         class="field-input"
                         type="date"
@@ -1649,7 +1649,7 @@
                     </label>
                     {#if installment.paid}
                       <label class="inline-date">
-                        <span class="sr-only">Paid date</span>
+                        <span class="sr-only">还款日期</span>
                         <input
                           class="field-input"
                           type="date"
@@ -1667,7 +1667,7 @@
                       </label>
                     {:else if pendingPaidInstallmentId === installment.id}
                       <label class="inline-date">
-                        <span class="sr-only">Paid date</span>
+                        <span class="sr-only">还款日期</span>
                         <input
                           class="field-input"
                           type="date"
