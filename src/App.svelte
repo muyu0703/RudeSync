@@ -72,13 +72,13 @@
     | "completed";
 
   const taskFilterLabels: Record<TaskFilter, string> = {
-    all: "Open",
-    inbox: "Inbox",
-    today: "Today",
-    upcoming: "Upcoming",
-    recurring: "Recurring",
-    categories: "Categories",
-    completed: "Completed",
+    all: "待处理",
+    inbox: "收件箱",
+    today: "今天",
+    upcoming: "即将到来",
+    recurring: "重复任务",
+    categories: "分类",
+    completed: "已完成",
   };
 
   const taskService = createTaskService();
@@ -217,12 +217,12 @@
   $: taskFilterSubtext = `${filteredTasks.length} shown · ${taskFilterLabels[taskFilter]}`;
 
   const sectionCopy: Record<AppSection, { eyebrow: string; title: string }> = {
-    today: { eyebrow: "Daily command center", title: "Today" },
-    tasks: { eyebrow: "Plan and follow through", title: "Tasks" },
-    work: { eyebrow: "Clients and deliverables", title: "Work" },
-    money: { eyebrow: "Invoices and obligations", title: "Money" },
-    review: { eyebrow: "Close the loop", title: "Weekly review" },
-    settings: { eyebrow: "Your workspace", title: "Settings" },
+    today: { eyebrow: "今日总览", title: "今天" },
+    tasks: { eyebrow: "计划与执行", title: "待办事项" },
+    work: { eyebrow: "客户与交付", title: "工作" },
+    money: { eyebrow: "发票与收支", title: "财务" },
+    review: { eyebrow: "每周复盘", title: "复盘" },
+    settings: { eyebrow: "你的工作区", title: "设置" },
   };
 
   function displayDate(value: string): string {
@@ -335,7 +335,7 @@
       backupWarning = "";
     } else if (settings.backupSetupRequired || !settings.backupDirectory) {
       backupWarning =
-        "Automatic backups are not set up yet. Choose a folder in Settings.";
+        "尚未设置自动备份，请在“设置”中选择备份文件夹。";
     } else if (settings.lastBackupError) {
       backupWarning = `Automatic backup needs attention: ${settings.lastBackupError}`;
     } else {
@@ -678,7 +678,7 @@
       <div class="topbar-actions">
         {#if active === "today" || active === "tasks"}
           <button class="search-trigger" type="button" on:click={openSearch}>
-            <Icon name="search" size={15} /><span>Find task</span><kbd>Ctrl K</kbd>
+            <Icon name="search" size={15} /><span>查找任务</span><kbd>Ctrl K</kbd>
           </button>
         {/if}
       </div>
@@ -688,7 +688,7 @@
       {#if errorMessage}
         <div class="error-banner" role="alert">
           <span>{errorMessage}</span>
-          <button type="button" aria-label="Dismiss error" on:click={() => (errorMessage = "")}>
+          <button type="button" aria-label="关闭错误提示" on:click={() => (errorMessage = "")}>
             <Icon name="x" size={15} />
           </button>
         </div>
@@ -699,7 +699,7 @@
           <Icon name="database" size={15} />
           <span>{backupWarning}</span>
           <button type="button" on:click={() => (active = "settings")}>
-            Open Settings
+            打开设置
           </button>
         </div>
       {/if}
@@ -712,30 +712,30 @@
         <StatRow>
           <StatCard
             icon="check"
-            label="Open tasks"
+            label="待处理"
             value={String(statOpen)}
-            detail={`${statDoneToday} done today`}
+            detail={`今天已完成 ${statDoneToday} 项`}
             tone="neutral"
           />
           <StatCard
             icon="clock"
-            label="Overdue"
+            label="已逾期"
             value={String(statOverdue)}
-            detail={statOverdue === 0 ? "Nothing late" : "Tasks and invoices"}
+            detail={statOverdue === 0 ? "暂无逾期" : "任务与发票"}
             tone={statOverdue > 0 ? "danger" : "neutral"}
           />
           <StatCard
             icon="invoice"
-            label="Outstanding"
-            value={statOutstanding.length ? formatStatMoney(statOutstanding[0]) : "None"}
-            detail={statOutstanding.length > 1 ? extraCurrencies(statOutstanding) : "Invoiced, not yet paid"}
+            label="待收款"
+            value={statOutstanding.length ? formatStatMoney(statOutstanding[0]) : "无"}
+            detail={statOutstanding.length > 1 ? extraCurrencies(statOutstanding) : "已开票，尚未收款"}
             tone={statOutstanding.length ? "warning" : "neutral"}
           />
           <StatCard
             icon="arrow-up-right"
-            label="Received"
-            value={statReceived.length ? formatStatMoney(statReceived[0]) : "None"}
-            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "This month"}
+            label="已收款"
+            value={statReceived.length ? formatStatMoney(statReceived[0]) : "无"}
+            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "本月"}
             tone={statReceived.length ? "positive" : "neutral"}
           />
         </StatRow>
@@ -745,23 +745,23 @@
           <input
             bind:this={quickInput}
             bind:value={quickTitle}
-            aria-label="Quick-add a task"
+            aria-label="快速添加待办"
             autocomplete="off"
             maxlength="240"
-            placeholder="What needs to get done?"
+            placeholder="接下来要做什么？"
           />
-          <span class="quick-hint">Today</span>
+          <span class="quick-hint">今天</span>
           <button type="submit" disabled={!quickTitle.trim() || saving}>
-            {saving ? "Adding…" : "Add task"}
+            {saving ? "正在添加…" : "添加任务"}
           </button>
         </form>
 
         <div class="today-grid">
           <Card padded={false}>
-            <SectionHeader slot="header" title="Today’s tasks" subtext="Due or planned for today">
+            <SectionHeader slot="header" title="今日任务" subtext="今天到期或计划执行">
               <svelte:fragment slot="actions">
                 <button class="text-button" type="button" on:click={() => (active = "tasks")}>
-                  View all <Icon name="chevron-right" size={14} />
+                  查看全部 <Icon name="chevron-right" size={14} />
                 </button>
               </svelte:fragment>
             </SectionHeader>
@@ -801,7 +801,7 @@
             {:else}
               <div class="empty-state compact">
                 <span class="empty-icon"><Icon name="check" size={19} /></span>
-                <div><strong>Nothing urgent</strong><p>Add a task above or plan something in Upcoming.</p></div>
+                <div><strong>暂无紧急事项</strong><p>在上方添加任务，或安排到即将到来。</p></div>
               </div>
             {/if}
           </Card>
@@ -843,7 +843,7 @@
                 </div>
               {/each}
               {#if !actionableLoanDues.length && !actionableInvoiceDues.length}
-                <div class="empty-inline">No invoice or personal-loan payments need attention.</div>
+                <div class="empty-inline">目前没有需要关注的发票或个人借款付款。</div>
               {/if}
             </Card>
           </aside>
@@ -886,30 +886,30 @@
                   </article>
                 {/each}
               </div>
-            {:else}<div class="empty-inline">No tasks are scheduled yet.</div>{/if}
+            {:else}<div class="empty-inline">暂无已安排任务。</div>{/if}
           </Card>
         </div>
       {:else if active === "tasks"}
         <div class="page-measure">
           <div class="page-actions">
-            <span class="keyboard-note"><kbd>Ctrl N</kbd> quick capture</span>
+            <span class="keyboard-note"><kbd>Ctrl N</kbd> 快速记录</span>
             <button
               class="primary-button"
               type="button"
               on:click={() => openTaskEditor()}
-            ><Icon name="plus" size={15} /> New task</button>
+            ><Icon name="plus" size={15} /> 新建任务</button>
             <button
               class="primary-button"
               type="button"
               disabled={!settingsService.isDesktop}
               on:click={() => void openTaskWidget()}
-            ><Icon name="spark" size={15} /> Pop out widget</button>
+            ><Icon name="spark" size={15} /> 打开悬浮窗</button>
           </div>
           <Card padded={false}>
-            <SectionHeader slot="header" title="All tasks" subtext={taskFilterSubtext}>
+            <SectionHeader slot="header" title="全部任务" subtext={taskFilterSubtext}>
               <svelte:fragment slot="actions">
-                <div class="segmented" aria-label="Task filters">
-                  {#each [["all", "Open"], ["inbox", "Inbox"], ["today", "Today"], ["upcoming", "Upcoming"], ["recurring", "Recurring"], ["categories", "Categories"], ["completed", "Completed"]] as filter}
+                <div class="segmented" aria-label="任务筛选">
+                  {#each [["all", "待处理"], ["inbox", "收件箱"], ["today", "今天"], ["upcoming", "即将到来"], ["recurring", "重复任务"], ["categories", "分类"], ["completed", "已完成"]] as filter}
                     <button
                       class:active={taskFilter === filter[0]}
                       type="button"
@@ -919,7 +919,7 @@
                   {/each}
                 </div>
                 <label class="inline-search">
-                  <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="Filter tasks" placeholder="Filter tasks" />
+                  <Icon name="search" size={14} /><input bind:this={searchInput} bind:value={searchQuery} aria-label="筛选任务" placeholder="筛选任务" />
                 </label>
               </svelte:fragment>
             </SectionHeader>
@@ -940,7 +940,7 @@
             {:else}
               <div class="empty-state large">
                 <span class="empty-icon"><Icon name="tasks" size={22} /></span>
-                <strong>No matching tasks</strong><p>Change the filter or capture a new task with Ctrl N.</p>
+                <strong>没有匹配的任务</strong><p>更改筛选条件，或按 Ctrl+N 新建任务。</p>
               </div>
             {/if}
           </Card>
@@ -957,24 +957,24 @@
         <StatRow>
           <StatCard
             icon="check"
-            label="Tasks done"
+            label="已完成任务"
             value={String(completedThisWeek.length)}
-            detail="This week"
+            detail="本周"
             tone={completedThisWeek.length > 0 ? "positive" : "neutral"}
           />
-          <StatCard icon="work" label="Work recorded" value={String(reviewWorkEntries.length)} detail="Entries logged" tone="neutral" />
+          <StatCard icon="work" label="已记录工作" value={String(reviewWorkEntries.length)} detail="已记录条目" tone="neutral" />
           <StatCard
             icon="arrow-up-right"
-            label="Received"
-            value={statReceived.length ? formatStatMoney(statReceived[0]) : "None"}
-            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "This month"}
+            label="已收款"
+            value={statReceived.length ? formatStatMoney(statReceived[0]) : "无"}
+            detail={statReceived.length > 1 ? extraCurrencies(statReceived) : "本月"}
             tone={statReceived.length ? "positive" : "neutral"}
           />
           <StatCard
             icon="loan"
-            label="Loan payments due"
+            label="待还借款"
             value={String(upcomingInstallmentCount)}
-            detail="Next 30 days"
+            detail="未来30天"
             tone={upcomingInstallmentCount > 0 ? "warning" : "neutral"}
           />
         </StatRow>
@@ -1010,7 +1010,7 @@
 
         <section class="panel full-panel">
           <div class="panel-header">
-            <div><span class="panel-kicker">Next-week planning</span><h3>Upcoming tasks</h3></div>
+            <div><span class="panel-kicker">下周计划</span><h3>即将到来的任务</h3></div>
             <span class="count-label">{upcomingTasks.length} planned</span>
           </div>
           {#if upcomingTasks.length}
@@ -1028,7 +1028,7 @@
           {:else}
             <div class="empty-state compact">
               <span class="empty-icon"><Icon name="calendar" size={19} /></span>
-              <div><strong>Plan the next move</strong><p>Upcoming tasks will appear here.</p></div>
+              <div><strong>安排下一步</strong><p>即将到来的任务 will appear here.</p></div>
             </div>
           {/if}
         </section>
@@ -1060,8 +1060,8 @@
       out:scale={{ duration: motionDuration(140), start: 0.98, opacity: 0, easing: cubicOut }}
     >
       <span class="setup-mark"><Icon name="spark" size={20} /></span>
-      <span class="eyebrow">One-minute setup</span>
-      <h2 id="setup-title">Finish setting up RudeSync</h2>
+      <span class="eyebrow">一分钟设置</span>
+      <h2 id="setup-title">完成 RudeSync 设置</h2>
       <p id="setup-description">
         Choose a backup folder and add the name that should appear on invoices.
         You can change both at any time.
