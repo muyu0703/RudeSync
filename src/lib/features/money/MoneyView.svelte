@@ -248,10 +248,10 @@
   // wording.
   function composerDiscardMessage(): string {
     if (showInvoiceForm) {
-      return "Discard this invoice draft? What you've typed will be lost.";
+      return "放弃这张发票草稿吗？已输入的内容会丢失。";
     }
     if (showLoanForm) {
-      return "Discard this loan schedule? What you've typed will be lost.";
+      return "放弃这份借款计划吗？已输入的内容会丢失。";
     }
     return "";
   }
@@ -406,7 +406,7 @@
           quantity: line.quantity,
           unitPriceMinor: parseMinorUnits(
             line.unitPrice || "0",
-            "Unit price",
+            "单价",
           ),
         })),
         discount: buildDiscount(),
@@ -567,7 +567,7 @@
         service.listPersonalLoans(),
       ]);
     } catch (error) {
-      errorMessage = errorText(error, "Money data could not be loaded.");
+      errorMessage = errorText(error, "无法加载财务数据。");
     } finally {
       loading = false;
     }
@@ -577,7 +577,7 @@
     status: "draft" | "issued",
   ): CreateInvoiceInput {
     if (!selectedProject) {
-      throw new Error("Select a project.");
+      throw new Error("请选择项目。");
     }
     return {
       projectId: selectedProject.id,
@@ -595,7 +595,7 @@
       lineItems: invoiceLines.map((line) => ({
         description: line.description,
         quantity: line.quantity,
-        unitPriceMinor: parseMinorUnits(line.unitPrice, "Unit price"),
+        unitPriceMinor: parseMinorUnits(line.unitPrice, "单价"),
       })),
       discount: buildDiscount(),
       taxPercentage: invoiceTax.trim() || null,
@@ -637,7 +637,7 @@
       }.`;
       resetInvoiceForm();
     } catch (error) {
-      errorMessage = errorText(error, "Invoice could not be saved.");
+      errorMessage = errorText(error, "无法保存发票。");
     } finally {
       saving = false;
     }
@@ -718,7 +718,7 @@
       );
       successMessage = `${updated.number} was issued.`;
     } catch (error) {
-      errorMessage = errorText(error, "Invoice could not be issued.");
+      errorMessage = errorText(error, "无法开出发票。");
     } finally {
       saving = false;
     }
@@ -742,7 +742,7 @@
       );
       successMessage = `${updated.number} was voided.`;
     } catch (error) {
-      errorMessage = errorText(error, "Invoice could not be voided.");
+      errorMessage = errorText(error, "无法作废发票。");
     } finally {
       saving = false;
     }
@@ -772,7 +772,7 @@
       projects = await service.listInvoiceProjects();
       successMessage = `Draft ${invoice.number} was discarded.`;
     } catch (error) {
-      errorMessage = errorText(error, "Draft could not be discarded.");
+      errorMessage = errorText(error, "无法删除草稿。");
     } finally {
       saving = false;
     }
@@ -795,7 +795,7 @@
       const allowOverpayment =
         amountMinor > balance &&
         window.confirm(
-          "This payment exceeds the balance. Keep the overpayment as invoice credit?",
+          "本次收款超过未收余额，是否将超额部分保留为发票余额？",
         );
       if (amountMinor > balance && !allowOverpayment) {
         return;
@@ -813,7 +813,7 @@
       paymentInvoiceId = null;
       successMessage = `Payment recorded on ${updated.number}.`;
     } catch (error) {
-      errorMessage = errorText(error, "Payment could not be saved.");
+      errorMessage = errorText(error, "无法保存收款记录。");
     } finally {
       saving = false;
     }
@@ -872,10 +872,10 @@
     errorMessage = "";
     try {
       if (loanCount < 1 || loanCount > 240) {
-        throw new Error("Installment count must be between 1 and 240.");
+        throw new Error("分期期数必须在 1 到 240 之间。");
       }
       if (loanFirstPayment < loanDate) {
-        throw new Error("First payment cannot be before the loan date.");
+        throw new Error("首期还款日期不能早于借款日期。");
       }
       if (loanFrequency === "custom") {
         loanScheduleDates = [
@@ -907,7 +907,7 @@
     } catch (error) {
       errorMessage = errorText(
         error,
-        "The loan schedule could not be generated.",
+        "无法生成借款还款计划。",
       );
     }
   }
@@ -941,7 +941,7 @@
       successMessage = `${created.operator} loan schedule was saved.`;
       resetLoanForm();
     } catch (error) {
-      errorMessage = errorText(error, "Personal loan could not be saved.");
+      errorMessage = errorText(error, "无法保存个人借款。");
     } finally {
       saving = false;
     }
@@ -998,12 +998,12 @@
     if (
       installment?.paid &&
       !paid &&
-      !window.confirm("Reopen this paid installment and clear its paid date?")
+      !window.confirm("重新打开这笔已还分期并清除还款日期吗？")
     ) {
       return;
     }
     if (paid && (!paidDate || !/^\d{4}-\d{2}-\d{2}$/.test(paidDate))) {
-      errorMessage = "Select a valid paid date.";
+      errorMessage = "请选择有效的还款日期。";
       return;
     }
     busyInstallments = new Set(busyInstallments).add(installmentId);
@@ -1020,7 +1020,7 @@
         pendingPaidInstallmentId = null;
       }
     } catch (error) {
-      errorMessage = errorText(error, "Installment could not be updated.");
+      errorMessage = errorText(error, "无法更新分期。");
     } finally {
       const next = new Set(busyInstallments);
       next.delete(installmentId);
@@ -1046,11 +1046,11 @@
       loans = loans.map((item) =>
         item.id === updated.id ? updated : item,
       );
-      successMessage = "Installment due date updated.";
+      successMessage = "分期到期日已更新。";
     } catch (error) {
       const message = errorText(
         error,
-        "Installment due date could not be updated.",
+        "无法更新分期到期日。",
       );
       await loadMoney();
       errorMessage = message;
@@ -1080,9 +1080,9 @@
       loans = loans.map((item) =>
         item.id === updated.id ? updated : item,
       );
-      successMessage = "Installment paid date updated.";
+      successMessage = "分期还款日期已更新。";
     } catch (error) {
-      const message = errorText(error, "Paid date could not be updated.");
+      const message = errorText(error, "无法更新还款日期。");
       await loadMoney();
       errorMessage = message;
     } finally {
@@ -1600,7 +1600,7 @@
           <div class="form-actions">
             <button class="secondary-button" type="button" on:click={cancelLoanComposer}>取消</button>
             <button class="primary-button" type="submit" disabled={saving || !loanScheduleDates.length || scheduleIsStale}>
-              {saving ? "Saving…" : "保存个人借款"}
+              {saving ? "保存中…" : "保存个人借款"}
             </button>
           </div>
         </form>
