@@ -23,13 +23,13 @@
     toggleSubtask: TaskDialogSubtaskDetail;
   }>();
   const weekdayOptions = [
-    ["MO", "Mon"],
-    ["TU", "Tue"],
-    ["WE", "Wed"],
-    ["TH", "Thu"],
-    ["FR", "Fri"],
-    ["SA", "Sat"],
-    ["SU", "Sun"],
+    ["MO", "周一"],
+    ["TU", "周二"],
+    ["WE", "周三"],
+    ["TH", "周四"],
+    ["FR", "周五"],
+    ["SA", "周六"],
+    ["SU", "周日"],
   ] as const;
 
   let title = "";
@@ -308,7 +308,7 @@
         </label>
 
         <label class="field span-2">
-          <span class="field-label">Notes <small>可选</small></span>
+          <span class="field-label">备注 <small>可选</small></span>
           <textarea
             class="field-textarea"
             bind:value={notes}
