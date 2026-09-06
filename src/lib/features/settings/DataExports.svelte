@@ -22,26 +22,26 @@
   }> = [
     {
       kind: "tasks",
-      label: "Tasks",
-      description: "Schedules, reminders, priorities, status, and project links.",
+      label: "待办事项",
+      description: "包含计划、提醒、优先级、状态和项目关联。",
       fileLabel: "tasks",
     },
     {
       kind: "completed-work",
-      label: "Completed work",
-      description: "Dated work records with client, project, notes, and URLs.",
+      label: "已完成工作",
+      description: "包含日期、客户、项目、备注和链接的工作记录。",
       fileLabel: "completed-work",
     },
     {
       kind: "invoices-payments",
-      label: "Invoices & payments",
-      description: "Invoice totals and a row for every received payment.",
+      label: "发票与收款",
+      description: "包含发票汇总，以及每笔已收款记录。",
       fileLabel: "invoices-payments",
     },
     {
       kind: "loan-schedules",
-      label: "Loan schedules",
-      description: "Every due date and its paid or unpaid state.",
+      label: "借款计划",
+      description: "包含每个到期日及其已还/未还状态。",
       fileLabel: "loan-schedules",
     },
   ];
@@ -56,7 +56,7 @@
     isError = false;
 
     if (!isTauriDesktop()) {
-      feedback = "CSV export is available in the installed desktop application.";
+      feedback = "CSV 导出仅在已安装的桌面版中可用。";
       isError = true;
       return;
     }
@@ -106,15 +106,15 @@
   function errorText(error: unknown): string {
     if (error instanceof Error && error.message) return error.message;
     if (typeof error === "string" && error.trim()) return error;
-    return "The CSV export could not be created.";
+    return "无法创建 CSV 导出文件。";
   }
 </script>
 
 <Card>
   <SectionHeader
     slot="header"
-    title="CSV exports"
-    subtext="Save readable spreadsheet copies without changing your local database."
+    title="CSV 导出"
+    subtext="导出可阅读的表格副本，不会修改本地数据库。"
   />
 
   <div class="export-grid">
@@ -130,7 +130,7 @@
           disabled={exporting !== null}
           on:click={() => exportData(option)}
         >
-          {exporting === option.kind ? "Exporting…" : "Export CSV"}
+          {exporting === option.kind ? "正在导出…" : "导出 CSV"}
         </button>
       </article>
     {/each}
