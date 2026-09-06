@@ -27,9 +27,9 @@
   export let hasChanges = false;
 
   const MOTION_OPTIONS: [MotionPreference, string][] = [
-    ["system", "Follow system"],
-    ["always", "Always on"],
-    ["reduced", "Off"],
+    ["system", "跟随系统"],
+    ["always", "始终开启"],
+    ["reduced", "关闭"],
   ];
 
   let settings: AppSettings = { ...DEFAULT_SETTINGS };
@@ -52,13 +52,13 @@
   $: hasChanges = settingsDirty || profileDirty;
   $: backupDestination =
     settings.backupDirectory ||
-    (service.isDesktop ? "No folder selected" : "Browser downloads");
+    (service.isDesktop ? "尚未选择文件夹" : "浏览器下载");
   $: backupWarning = !service.isDesktop || !settings.backupEnabled
     ? ""
     : settings.backupSetupRequired || !settings.backupDirectory
-      ? "Choose a dedicated folder to activate automatic daily backups."
+      ? "请选择一个专用文件夹以启用每日自动备份。"
       : settings.lastBackupError
-        ? `Automatic backup needs attention: ${settings.lastBackupError}`
+        ? `自动备份需要处理：${settings.lastBackupError}`
         : "";
 
   onMount(() => {
@@ -78,7 +78,7 @@
     } catch (error) {
       errorMessage = errorText(
         error,
-        "Your settings could not be loaded.",
+        "无法加载设置。",
       );
     } finally {
       loading = false;
@@ -88,17 +88,17 @@
   function validate(): void {
     const currency = settings.defaultCurrency.trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(currency)) {
-      throw new Error("Default currency must be a three-letter code.");
+      throw new Error("默认币种必须是 3 位字母代码。");
     }
     if (
       !Number.isSafeInteger(settings.backupRetentionCount) ||
       settings.backupRetentionCount < 1 ||
       settings.backupRetentionCount > 365
     ) {
-      throw new Error("Backup retention must be between 1 and 365 copies.");
+      throw new Error("备份保留数量必须在 1 到 365 份之间。");
     }
     if (profile.email && profile.email.length > 240) {
-      throw new Error("Email or contact details are too long.");
+      throw new Error("邮箱或联系方式过长。");
     }
     settings.defaultCurrency = currency;
     profile.displayName = profile.displayName.trim();
@@ -131,9 +131,9 @@
         );
       }
       await Promise.all(operations);
-      successMessage = "Settings saved.";
+      successMessage = "设置已保存。";
     } catch (error) {
-      errorMessage = errorText(error, "Your settings could not be saved.");
+      errorMessage = errorText(error, "无法保存设置。");
     } finally {
       saving = false;
     }
@@ -144,7 +144,7 @@
     settings = JSON.parse(savedSettings) as AppSettings;
     profile = JSON.parse(savedProfile) as InvoiceProfile;
     errorMessage = "";
-    successMessage = "Unsaved changes discarded.";
+    successMessage = "已放弃未保存的修改。";
   }
 
   async function chooseBackupFolder(): Promise<void> {
@@ -164,15 +164,15 @@
           settings = await service.updateSettings(settings);
           savedSettings = JSON.stringify(settings);
           successMessage =
-            "Backup folder saved. Automatic daily backups are active.";
+            "备份文件夹已保存，每日自动备份已启用。";
         }
         if (!service.isDesktop) {
           successMessage =
-            "Browser preview selected a folder label. Backups download through your browser.";
+            "浏览器预览已选择文件夹名称，备份将通过浏览器下载。";
         }
       }
     } catch (error) {
-      errorMessage = errorText(error, "The folder picker could not open.");
+      errorMessage = errorText(error, "无法打开文件夹选择器。");
     } finally {
       choosingFolder = false;
     }
@@ -187,7 +187,7 @@
       const selected = await service.chooseLogoPath(profile.logoPath);
       if (selected) profile = { ...profile, logoPath: selected };
     } catch (error) {
-      errorMessage = errorText(error, "The logo picker could not open.");
+      errorMessage = errorText(error, "无法打开 Logo 选择器。");
     } finally {
       choosingLogo = false;
     }
@@ -201,9 +201,9 @@
     try {
       latestBackup = await service.runManualBackup();
       if (!latestBackup) return;
-      successMessage = `Backup complete: ${latestBackup.fileName}`;
+      successMessage = `备份完成：${latestBackup.fileName}`;
     } catch (error) {
-      errorMessage = errorText(error, "The backup could not be completed.");
+      errorMessage = errorText(error, "备份未能完成。");
     } finally {
       backingUp = false;
     }
@@ -213,7 +213,7 @@
     if (restoring || saving || backingUp) return;
     if (
       !window.confirm(
-        "Restore a RudeSync backup? Current data will be preserved in a pre-restore safety copy, then this screen will reload.",
+        "恢复 RudeSync 备份吗？当前数据会先保存一份安全副本，然后重新加载此页面。",
       )
     ) {
       return;
@@ -224,10 +224,10 @@
     try {
       const restored = await service.restoreFromBackup();
       if (!restored) return;
-      successMessage = `Restore complete. Safety copy: ${restored.safetyBackupPath}`;
+      successMessage = `恢复完成。安全副本：${restored.safetyBackupPath}`;
       window.setTimeout(() => window.location.reload(), 250);
     } catch (error) {
-      errorMessage = errorText(error, "The backup could not be restored.");
+      errorMessage = errorText(error, "无法恢复备份。");
     } finally {
       restoring = false;
     }
@@ -249,7 +249,7 @@
   }
 
   function formatTimestamp(value: string | null): string {
-    if (!value) return "No backup recorded yet";
+    if (!value) return "暂无备份记录";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat("en-US", {
@@ -271,17 +271,17 @@
 
 <section
   class="settings-view"
-  aria-label="RudeSync settings"
+  aria-label="RudeSync 设置"
   aria-busy={loading}
 >
   <div class="intro-header">
     <SectionHeader
-      title="Make RudeSync yours."
-      subtext="Set up invoices, daily behavior, and backups. Your working data stays on this device."
+      title="设置你的 RudeSync"
+      subtext="设置发票、日常使用方式和备份；工作数据始终保存在本机。"
     >
       <svelte:fragment slot="actions">
-        <span class="status-pill" title="RudeSync works without a cloud connection">
-          Local-first · {service.isDesktop ? "Desktop database" : "Browser preview storage"}
+        <span class="status-pill" title="RudeSync 无需云端连接也能使用">
+          本地优先 · {service.isDesktop ? "桌面数据库" : "浏览器预览存储"}
         </span>
       </svelte:fragment>
     </SectionHeader>
@@ -296,7 +296,7 @@
         type="button"
         disabled={choosingFolder}
         on:click={chooseBackupFolder}
-      >{choosingFolder ? "Opening…" : "Choose folder"}</button>
+      >{choosingFolder ? "正在打开…" : "选择文件夹"}</button>
     </div>
   {/if}
 
@@ -307,7 +307,7 @@
       <button
         class="dismiss"
         type="button"
-        aria-label="Dismiss error"
+        aria-label="关闭错误提示"
         on:click={() => (errorMessage = "")}
       ><Icon name="x" size={13} /></button>
     </div>
@@ -320,14 +320,14 @@
       <button
         class="dismiss"
         type="button"
-        aria-label="Dismiss message"
+        aria-label="关闭提示"
         on:click={() => (successMessage = "")}
       ><Icon name="x" size={13} /></button>
     </div>
   {/if}
 
   {#if loading}
-    <div class="skeleton-list" aria-label="Loading settings">
+    <div class="skeleton-list" aria-label="正在加载设置">
       <span></span><span></span><span></span>
     </div>
   {:else}
@@ -340,75 +340,75 @@
       <div class="page-actions">
         <span class="save-status">
           {hasChanges
-            ? "You have unsaved changes."
-            : "Everything is up to date."}
+            ? "你有尚未保存的修改。"
+            : "所有设置均已保存。"}
         </span>
         <button
           class="text-button"
           type="button"
           disabled={!hasChanges || saving}
           on:click={discardChanges}
-        >Discard</button>
+        >放弃</button>
         <button
           class="primary-button"
           type="submit"
           disabled={!hasChanges || saving}
         >
           <Icon name="check" size={14} strokeWidth={2.2} />
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? "保存中…" : "保存修改"}
         </button>
       </div>
 
       <Card>
         <SectionHeader
           slot="header"
-          title="Invoice profile"
-          subtext="This information appears on printable invoices."
+          title="发票资料"
+          subtext="这些信息会显示在可打印的发票上。"
         >
           <svelte:fragment slot="actions">
-            {#if profileDirty}<span class="unsaved-badge">Unsaved</span>{/if}
+            {#if profileDirty}<span class="unsaved-badge">未保存</span>{/if}
           </svelte:fragment>
         </SectionHeader>
 
         <div class="field-grid">
           <label class="field">
-            <span class="field-label">Your name <b>Required for invoices</b></span>
+            <span class="field-label">你的姓名 <b>发票必填</b></span>
             <input
               class="field-input"
               bind:value={profile.displayName}
               type="text"
               maxlength="160"
               autocomplete="name"
-              placeholder="Your full name"
+              placeholder="你的完整姓名"
             />
           </label>
 
           <label class="field">
-            <span class="field-label">Business name <b>Optional</b></span>
+            <span class="field-label">公司 / 店铺名称 <b>可选</b></span>
             <input
               class="field-input"
               bind:value={profile.businessName}
               type="text"
               maxlength="160"
               autocomplete="organization"
-              placeholder="Studio or company name"
+              placeholder="工作室或公司名称"
             />
           </label>
 
           <label class="field wide">
-            <span class="field-label">Business address</span>
+            <span class="field-label">地址</span>
             <textarea
               class="field-textarea"
               bind:value={profile.address}
               rows="3"
               maxlength="1000"
               autocomplete="street-address"
-              placeholder="Address shown in the invoice header"
+              placeholder="显示在发票抬头中的地址"
             ></textarea>
           </label>
 
           <label class="field">
-            <span class="field-label">Email or contact</span>
+            <span class="field-label">邮箱或联系方式</span>
             <input
               class="field-input"
               bind:value={profile.email}
@@ -420,7 +420,7 @@
           </label>
 
           <div class="field">
-            <label class="field-label" for="invoice-logo">Logo path <b>Optional</b></label>
+            <label class="field-label" for="invoice-logo">Logo 路径 <b>可选</b></label>
             <div class="path-control">
               <input
                 id="invoice-logo"
@@ -428,25 +428,25 @@
                 bind:value={profile.logoPath}
                 type="text"
                 maxlength="1000"
-                placeholder="No logo selected"
+                placeholder="未选择 Logo"
               />
               <button
                 class="compact-button"
                 type="button"
                 disabled={choosingLogo}
                 on:click={chooseLogo}
-              >{choosingLogo ? "Opening…" : "Browse"}</button>
+              >{choosingLogo ? "正在打开…" : "浏览"}</button>
             </div>
           </div>
 
           <label class="field wide">
-            <span class="field-label">Payment instructions</span>
+            <span class="field-label">付款说明</span>
             <textarea
               class="field-textarea"
               bind:value={profile.paymentInstructions}
               rows="4"
               maxlength="4000"
-              placeholder="Bank, transfer, or payment details for your clients"
+              placeholder="给客户的银行、转账或付款信息"
             ></textarea>
           </label>
         </div>
@@ -454,11 +454,11 @@
 
       <div class="settings-grid">
         <Card>
-          <SectionHeader slot="header" title="Money and calendar" subtext="Defaults" />
+          <SectionHeader slot="header" title="财务与日历" subtext="默认设置" />
 
           <div class="field-stack">
             <label class="field">
-              <span class="field-label">Default currency</span>
+              <span class="field-label">默认币种</span>
               <input
                 class="field-input short-input"
                 bind:value={settings.defaultCurrency}
@@ -467,21 +467,21 @@
                 inputmode="text"
                 aria-describedby="currency-help"
               />
-              <small id="currency-help" class="field-hint">USD by default; each client can override it.</small>
+              <small id="currency-help" class="field-hint">默认 USD；每个客户可单独设置。</small>
             </label>
 
             <label class="field">
-              <span class="field-label">Default invoice term</span>
+              <span class="field-label">默认付款期限</span>
               <select class="field-input" bind:value={settings.defaultInvoiceTerm}>
-                <option value="immediate">Due immediately</option>
-                <option value="7-days">Due in 7 days</option>
-                <option value="14-days">Due in 14 days</option>
-                <option value="30-days">Due in 30 days</option>
+                <option value="immediate">立即到期</option>
+                <option value="7-days">7天后到期</option>
+                <option value="14-days">14天后到期</option>
+                <option value="30-days">30天后到期</option>
               </select>
             </label>
 
             <label class="field">
-              <span class="field-label">Date display</span>
+              <span class="field-label">日期显示</span>
               <select class="field-input" bind:value={settings.dateFormat}>
                 <option value="MMMM d, yyyy">July 23, 2026</option>
                 <option value="MM/dd/yyyy">07/23/2026</option>
@@ -490,23 +490,23 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Week starts on</span>
+              <span class="field-label">每周开始日</span>
               <select class="field-input" bind:value={settings.weekStartsOn}>
-                <option value={1}>Monday</option>
-                <option value={0}>Sunday</option>
+                <option value={1}>周一</option>
+                <option value={0}>周日</option>
               </select>
             </label>
           </div>
         </Card>
 
         <Card>
-          <SectionHeader slot="header" title="Startup and alerts" subtext="Windows behavior" />
+          <SectionHeader slot="header" title="启动与提醒" subtext="Windows 行为" />
 
           <div class="toggle-list">
             <label class="toggle-row">
               <span>
-                <strong>Open when Windows starts</strong>
-                <small>Keep today’s plan ready after sign-in.</small>
+                <strong>Windows 启动时自动运行</strong>
+                <small>登录后自动准备好今日计划。</small>
               </span>
               <input
                 bind:checked={settings.autostartEnabled}
@@ -517,8 +517,8 @@
 
             <label class="toggle-row">
               <span>
-                <strong>Close to system tray</strong>
-                <small>The X button hides RudeSync; Quit closes it fully.</small>
+                <strong>关闭到系统托盘</strong>
+                <small>点击 X 隐藏到托盘；退出会完全关闭。</small>
               </span>
               <input bind:checked={settings.closeToTray} type="checkbox" />
               <i aria-hidden="true"></i>
@@ -526,8 +526,8 @@
 
             <label class="toggle-row">
               <span>
-                <strong>Windows notifications</strong>
-                <small>Tasks, invoice dates, and personal loan due dates.</small>
+                <strong>Windows 通知</strong>
+                <small>任务、发票日期和个人借款到期提醒。</small>
               </span>
               <input
                 bind:checked={settings.notificationsEnabled}
@@ -541,8 +541,8 @@
             <div class:registered={settings.autostartRegistered} class="registration-note">
               <span aria-hidden="true"></span>
               {settings.autostartRegistered
-                ? "Startup registration is active."
-                : "Startup registration will be applied when settings are saved."}
+                ? "开机启动已启用。"
+                : "保存设置后将启用开机启动。"}
             </div>
           {/if}
         </Card>
@@ -550,17 +550,17 @@
         <Card>
           <SectionHeader
             slot="header"
-            title="Appearance"
-            subtext="How RudeSync animates on this device."
+            title="外观"
+            subtext="设置 RudeSync 在本机上的动画效果。"
           >
             <svelte:fragment slot="actions">
-              <span class="soft-badge" title="This control saves itself; it does not use the Save changes button below.">Applies immediately</span>
+              <span class="soft-badge" title="此项会自动保存，无需点击下方保存按钮。">立即生效</span>
             </svelte:fragment>
           </SectionHeader>
 
           <div class="field">
-            <span class="field-label">Animations</span>
-            <div class="segmented" aria-label="Animations">
+            <span class="field-label">动画</span>
+            <div class="segmented" aria-label="动画">
               {#each MOTION_OPTIONS as option}
                 <button
                   class:active={motionPreference === option[0]}
@@ -570,7 +570,7 @@
                 >{option[1]}</button>
               {/each}
             </div>
-            <small class="field-hint">Applies immediately and is saved on this device only. Follow system uses your Windows animation setting.</small>
+            <small class="field-hint">设置会立即生效并仅保存在本机；“跟随系统”会使用 Windows 的动画设置。</small>
           </div>
         </Card>
       </div>
@@ -578,12 +578,12 @@
       <Card>
         <SectionHeader
           slot="header"
-          title="Local backups"
-          subtext="Keep one automatic copy each day and remove older copies safely."
+          title="本地备份"
+          subtext="每天自动保留一份备份，并安全清理较旧副本。"
         >
           <svelte:fragment slot="actions">
             <span class={settings.backupEnabled ? "status-pill" : "soft-badge"}>
-              {settings.backupEnabled ? "Daily" : "Paused"}
+              {settings.backupEnabled ? "每天" : "已暂停"}
             </span>
           </svelte:fragment>
         </SectionHeader>
@@ -592,8 +592,8 @@
           <div class="backup-main">
             <label class="toggle-row standalone">
               <span>
-                <strong>Automatic daily backup</strong>
-                <small>Creates one automatic copy per local calendar day.</small>
+                <strong>每日自动备份</strong>
+                <small>每天自动创建一份本地备份。</small>
               </span>
               <input bind:checked={settings.backupEnabled} type="checkbox" />
               <i aria-hidden="true"></i>
@@ -615,11 +615,11 @@
                   type="button"
                   disabled={choosingFolder}
                   on:click={chooseBackupFolder}
-                >{choosingFolder ? "Opening…" : "Choose folder"}</button>
+                >{choosingFolder ? "正在打开…" : "选择文件夹"}</button>
               </div>
               <small id="backup-folder-help" class="field-hint">
                 {service.isDesktop
-                  ? "Automatic retained copies use this folder; manual copies can be saved elsewhere."
+                  ? "自动备份会保存在此文件夹；手动备份可另存到其他位置。"
                   : "Browser preview downloads a portable JSON backup instead."}
               </small>
             </div>
@@ -627,7 +627,7 @@
 
           <div class="backup-meta">
             <label class="field retention-field">
-              <span class="field-label">Keep latest copies</span>
+              <span class="field-label">保留最近备份</span>
               <div class="number-control">
                 <input
                   class="field-input"
@@ -637,12 +637,12 @@
                   max="365"
                   step="1"
                 />
-                <span>copies</span>
+                <span>份</span>
               </div>
             </label>
 
             <div class="last-backup">
-              <span>{latestBackup ? "Latest manual backup" : "Last automatic backup"}</span>
+              <span>{latestBackup ? "Latest manual backup" : "最近一次自动备份"}</span>
               <strong>{formatTimestamp(latestBackup?.completedAt ?? settings.lastBackupAt)}</strong>
               {#if latestBackup?.sizeBytes != null}
                 <small>{latestBackup.destinationPath} · {formatBytes(latestBackup.sizeBytes)}</small>
@@ -656,7 +656,7 @@
               on:click={runManualBackup}
             >
               <Icon name="database" size={14} />
-              {backingUp ? "Backing up…" : "Create manual backup"}
+              {backingUp ? "正在备份…" : "创建手动备份"}
             </button>
 
             {#if service.isDesktop}
@@ -667,7 +667,7 @@
                 on:click={restoreFromBackup}
               >
                 <Icon name="shield" size={14} />
-                {restoring ? "Restoring…" : "Restore from backup"}
+                {restoring ? "正在恢复…" : "从备份恢复"}
               </button>
             {/if}
           </div>
@@ -676,18 +676,17 @@
 
       <DataExports />
 
-      <aside class="local-card" aria-label="Local-first data status">
+      <aside class="local-card" aria-label="本地数据状态">
         <Icon name="shield" size={18} />
         <div>
-          <strong>Your workspace is local-first.</strong>
+          <strong>你的工作区以本地数据为主。</strong>
           <span>
-            Tasks, projects, invoices, and loan schedules remain on this
-            device. Cloud sync is not enabled in this version.
+            任务、项目、发票和借款计划都保存在本机。此版本未启用云同步。
           </span>
         </div>
         <span class="on-device">
           <i aria-hidden="true"></i>
-          On device
+          保存在本机
         </span>
       </aside>
     </form>
