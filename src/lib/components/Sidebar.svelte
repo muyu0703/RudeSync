@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <nav class="nav-list" aria-label="Workspace">
+  <nav class="nav-list" aria-label="工作区">
     <span class="nav-label">工作区</span>
     {#each primary as item}
       <button
@@ -44,7 +44,7 @@
         <span class="nav-icon"><Icon name={item.icon} size={17} /></span>
         <span class="nav-text">{item.label}</span>
         {#if item.id === "tasks" && openTaskCount > 0}
-          <span class="nav-count" aria-label={`${openTaskCount} open tasks`}>
+          <span class="nav-count" aria-label={`${openTaskCount} 个待办`}>
             {openTaskCount}
           </span>
         {/if}
@@ -60,7 +60,7 @@
       class="nav-item"
       type="button"
       aria-current={active === "settings" ? "page" : undefined}
-      title="Settings"
+      title="设置"
       on:click={() => onSelect("settings")}
     >
       <span class="nav-icon"><Icon name="settings" size={17} /></span>
