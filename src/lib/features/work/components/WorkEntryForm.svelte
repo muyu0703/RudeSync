@@ -79,13 +79,13 @@
       </select>
     </label>
     <label>
-      <span class="field-label">Completed on <b aria-hidden="true">*</b></span>
+      <span class="field-label">完成日期 <b aria-hidden="true">*</b></span>
       <input class="field-input" bind:value={workDate} type="date" required />
     </label>
   </div>
 
   <label>
-    <span class="field-label">What did you complete? <b aria-hidden="true">*</b></span>
+    <span class="field-label">完成了什么？ <b aria-hidden="true">*</b></span>
     <input
       class="field-input"
       bind:value={title}
