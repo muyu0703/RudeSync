@@ -70,9 +70,9 @@
 <form id="work-entry-form" on:submit|preventDefault={submit}>
   <div class="field-grid project-row">
     <label>
-      <span class="field-label">Project</span>
+      <span class="field-label">项目</span>
       <select class="field-input" bind:value={projectId} data-work-autofocus>
-        <option value="">No project · personal work</option>
+        <option value="">无项目 · 个人工作</option>
         {#each projects as project (project.id)}
           <option value={project.id}>{project.name}</option>
         {/each}
@@ -90,24 +90,24 @@
       class="field-input"
       bind:value={title}
       maxlength="200"
-      placeholder="Finished the account settings flow"
+      placeholder="例如：完成店铺设置流程"
       required
     />
   </label>
 
   <label>
-    <span class="field-label">Details</span>
+    <span class="field-label">详情</span>
     <textarea
       class="field-textarea"
       bind:value={details}
       maxlength="2400"
       rows="4"
-      placeholder="A concise record of what changed or shipped."
+      placeholder="简要记录完成或交付的内容。"
     ></textarea>
   </label>
 
   <label>
-    <span class="field-label">Reference URLs</span>
+    <span class="field-label">参考链接</span>
     <textarea
       class="field-textarea"
       bind:value={urlsText}
@@ -117,7 +117,7 @@
       rows="3"
       placeholder={"https://project.example.com\nhttps://github.com/…"}
     ></textarea>
-    <small id="work-url-help" class="field-hint">Optional · one complete URL per line</small>
+    <small id="work-url-help" class="field-hint">可选 · 每行一个完整链接</small>
   </label>
 
   {#if validationMessage}
@@ -128,7 +128,7 @@
 
 <svelte:fragment slot="footer">
   <footer>
-    <button class="secondary" type="button" disabled={busy} on:click={onCancel}>Cancel</button>
+    <button class="secondary" type="button" disabled={busy} on:click={onCancel}>取消</button>
     <button class="primary" type="submit" form="work-entry-form" disabled={busy || !title.trim() || !workDate}>
       {busy ? "Saving…" : entry ? "Save changes" : "Record completed work"}
     </button>
